@@ -1,4 +1,3 @@
-// auth_protect.js
 (function protectPages() {
   const openPages = ["logon.html", "register.html"];
 

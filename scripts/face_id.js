@@ -1,20 +1,16 @@
-// backend/face_id.js - Dual Mode: Laptop (WebRTC) <-> RasPi (MJPEG)
-// TÍNH NĂNG MỚI: Chụp 5 ảnh/lần bấm nút và giới hạn 5 lần chụp thành công.
-
 document.addEventListener("DOMContentLoaded", () => {
   const takeBtn = document.querySelector(".take-btn");
   const cameraWrapper = document.querySelector(".face-scan-wrapper");
   const statusEl = document.querySelector("#status");
-  const BRIDGE_SERVER = "https://smart-locker-kgnx.onrender.com/raspi";
-  const RASPI_NGROK = "https://adelaida-gymnogynous-gnostically.ngrok-free.dev"; // ✅ Đã thêm lại Ngrok URL
+  const BRIDGE_SERVER = "https://f-locker-backend.onrender.com/raspi";
+  const RASPI_NGROK = "https://adelaida-gymnogynous-gnostically.ngrok-free.dev";
   const LOCAL_IP_CHECK = ["localhost", "127.0.0.1", "192.168."];
   const MAX_SUCCESS_CAPTURES = 5;
 
   let mediaStream = null;
   let isRasPiMode = false;
-  let captureCount = 0; // Biến đếm số lần chụp thành công
+  let captureCount = 0;
 
-  // Cập nhật trạng thái nút và hiển thị số lần chụp
   function updateCaptureStatus() {
     takeBtn.textContent = `📸 Chụp (${captureCount}/${MAX_SUCCESS_CAPTURES})`;
     if (captureCount >= MAX_SUCCESS_CAPTURES) {
@@ -28,7 +24,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // Khởi tạo: Đọc số lần chụp đã lưu (sử dụng localStorage để giữ trạng thái)
   function initialize() {
     const user = JSON.parse(sessionStorage.getItem("user"));
     const username = user?.name || user?.username || "unknown";
@@ -36,7 +31,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     captureCount = parseInt(localStorage.getItem(storageKey) || "0", 10);
 
-    // Xóa phần tử #cameraPreview cũ nếu có (từ HTML gốc)
     const oldImg = document.querySelector("img#cameraPreview");
     if (oldImg) oldImg.remove();
 
@@ -44,10 +38,9 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCaptureStatus();
   }
 
-  // 1. Thiết lập giao diện và chế độ Camera
   function setupCameraInterface() {
     const currentUrl = window.location.href;
-    // Thêm kiểm tra RASPI_NGROK vào isLocal để phân biệt RasPi chạy qua Ngrok
+
     const isLocal =
       LOCAL_IP_CHECK.some((ip) => currentUrl.includes(ip)) ||
       currentUrl.includes(RASPI_NGROK);
@@ -58,7 +51,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const img = document.createElement("img");
       img.id = "cameraPreview";
-      // Sử dụng 127.0.0.1:5000 cho RasPi (vì request đến Render Bridge sẽ xử lý)
+
       img.src = `${currentUrl.split(":")[0]}://127.0.0.1:5000/video_feed`;
       img.alt = "Raspberry Pi Camera Preview";
       img.style.maxWidth = "90%";
@@ -86,7 +79,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 2. Kích hoạt camera Laptop (WebRTC)
   async function startLaptopCamera(videoEl) {
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -101,11 +93,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  // 3. Xử lý logic chụp ảnh
   takeBtn.addEventListener("click", async () => {
     if (captureCount >= MAX_SUCCESS_CAPTURES) return;
 
-    takeBtn.disabled = true; // Vô hiệu hóa nút trong khi xử lý
+    takeBtn.disabled = true;
 
     const user = JSON.parse(sessionStorage.getItem("user"));
     const rawUsername = user?.name || user?.username || "unknown";
@@ -120,7 +111,6 @@ document.addEventListener("DOMContentLoaded", () => {
     let endpoint;
 
     if (!isRasPiMode) {
-      // CHẾ ĐỘ LAPTOP: Chụp 5 ảnh Base64
       if (!mediaStream) {
         statusEl.textContent = "❌ Camera Laptop chưa sẵn sàng.";
         takeBtn.disabled = false;
@@ -131,22 +121,20 @@ document.addEventListener("DOMContentLoaded", () => {
       const images = [];
 
       for (let i = 0; i < 5; i++) {
-        // Chụp 5 tấm ảnh liên tiếp
         const canvas = document.createElement("canvas");
         canvas.width = videoEl.videoWidth;
         canvas.height = videoEl.videoHeight;
         canvas
           .getContext("2d")
           .drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        // Gửi dữ liệu ảnh Base64
+
         images.push(canvas.toDataURL("image/jpeg", 0.9).split(",")[1]);
-        await new Promise((r) => setTimeout(r, 200)); // Đợi 200ms giữa các tấm
+        await new Promise((r) => setTimeout(r, 200));
       }
 
-      payload.images_data = images; // Gửi mảng ảnh
+      payload.images_data = images;
       endpoint = `${BRIDGE_SERVER}/capture-remote-batch`;
     } else {
-      // CHẾ ĐỘ RASPI: Chỉ gửi lệnh RasPi tự chụp 5 tấm
       endpoint = `${BRIDGE_SERVER}/capture-batch`;
     }
 
@@ -159,7 +147,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (data.success) {
-        captureCount += 1; // Tăng số lần chụp thành công
+        captureCount += 1;
         localStorage.setItem(storageKey, captureCount.toString());
         statusEl.textContent = `✅ Lần chụp #${captureCount} thành công! Đã lưu 5 ảnh và Train.`;
         statusEl.style.color = "#00ff66";
@@ -173,7 +161,7 @@ document.addEventListener("DOMContentLoaded", () => {
         "❌ Cannot contact Raspberry Pi Bridge! Kiểm tra Ngrok và Render.";
       statusEl.style.color = "#ff3333";
     } finally {
-      updateCaptureStatus(); // Cập nhật trạng thái sau khi hoàn tất
+      updateCaptureStatus();
     }
   });
 

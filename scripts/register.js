@@ -1,9 +1,7 @@
-// register.js
 document.addEventListener("DOMContentLoaded", () => {
   const form = document.getElementById("registerForm");
   if (!form) return;
 
-  // CAPTCHA setup
   const canvas = document.getElementById("captchaCanvas");
   const refreshBtn = document.getElementById("refreshCaptcha");
   const audioBtn = document.getElementById("audioCaptcha");
@@ -69,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
   audioBtn.addEventListener("click", speakCaptcha);
   refreshCaptcha();
 
-  // FORM SUBMIT
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const userCaptcha = (captchaInput.value || "").trim().toUpperCase();
@@ -92,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     try {
       const res = await fetch(
-        "https://smart-locker-kgnx.onrender.com/register",
+        "https://f-locker-backend.onrender.com/register",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -105,11 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (res.ok && data.user) {
         alert("✅ Registration successful! Please log in to continue.");
 
-        // ✅ KHÔNG lưu session khi register
         sessionStorage.removeItem("user");
         sessionStorage.removeItem("locker_to_open");
 
-        // ✅ Chuyển về trang đăng nhập
         window.location.href = "logon.html";
       } else {
         alert("❌ " + (data.error || "Register failed"));

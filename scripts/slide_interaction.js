@@ -1,5 +1,3 @@
-// backend/slide_interaction.js - Tương tác với slider trên index.html
-
 document.addEventListener("DOMContentLoaded", () => {
   const sliderTrack = document.querySelector(".slider-track");
   if (!sliderTrack) return;
@@ -17,7 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // Gọi hàm xử lý click từ open.js
     window.handleLockerClick(lockerId);
   });
   window.updateSliderUI = (lockerStates) => {
@@ -73,24 +70,23 @@ document.addEventListener("DOMContentLoaded", () => {
     button.style.padding = "6px 12px";
     button.style.fontSize = "14px";
     button.style.backgroundColor = color;
-    button.style.color = color === "yellow" ? "black" : "white"; // Chữ đen cho nền vàng
+    button.style.color = color === "yellow" ? "black" : "white";
     button.style.border = "none";
     button.style.borderRadius = "5px";
     button.style.cursor = "pointer";
-    button.style.zIndex = "5"; // Nổi trên overlay
-    button.style.opacity = "0"; // Ẩn ban đầu
+    button.style.zIndex = "5";
+    button.style.opacity = "0";
     button.style.visibility = "hidden";
     button.style.transition = "opacity 0.2s ease";
 
     button.onclick = (e) => {
-      e.preventDefault(); // Ngăn thẻ <a>
-      e.stopPropagation(); // Ngăn sự kiện click vào slide
+      e.preventDefault();
+      e.stopPropagation();
       onClickHandler();
     };
 
     slide.appendChild(button);
 
-    // Hiện nút khi hover slide (không phải overlay)
     slide.onmouseenter = () => {
       button.style.visibility = "visible";
       button.style.opacity = "1";

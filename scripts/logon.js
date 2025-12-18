@@ -1,6 +1,4 @@
-// logon.js
 document.addEventListener("DOMContentLoaded", () => {
-  // Nếu đã login (sessionStorage), chuyển về index luôn
   if (sessionStorage.getItem("user")) {
     window.location.href = "index.html";
     return;
@@ -15,7 +13,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const password = document.getElementById("password").value.trim();
 
     try {
-      const res = await fetch("https://smart-locker-kgnx.onrender.com/login", {
+      const res = await fetch("https://f-locker-backend.onrender.com/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -24,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
       const data = await res.json();
 
       if (res.ok && data.user) {
-        // ✅ LƯU TRỰC TIẾP user object CHUẨN HÓA từ server (có user.id và user.lockerCode)
         sessionStorage.setItem("user", JSON.stringify(data.user));
 
         alert("✅ Login successful!");

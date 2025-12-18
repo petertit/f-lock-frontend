@@ -1,4 +1,3 @@
-// pass_lock_login.js — Kiểm tra mã khóa tủ & mở tủ
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(sessionStorage.getItem("user"));
   if (!user) {
@@ -31,7 +30,6 @@ document.addEventListener("DOMContentLoaded", () => {
       row3.textContent = "✅ Mã chính xác — Đang gửi lệnh mở tủ...";
       row3.style.color = "#00ff66";
 
-      // ✅ SỬA LỖI: Gọi hàm thành công chung (Hàm này sẽ xử lý mở Pi và chuyển hướng)
       if (window.openLockerSuccess) {
         window.openLockerSuccess(lockerId);
       } else {

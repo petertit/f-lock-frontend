@@ -1,4 +1,3 @@
-// detail.js — Quản lý tài khoản, mã khóa tủ, và số tủ đã đăng ký
 document.addEventListener("DOMContentLoaded", async () => {
   const user = JSON.parse(sessionStorage.getItem("user"));
   if (!user) {
@@ -7,7 +6,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
-  // ✅ LẤY THÊM ELEMENT MỚI
   const nameEl = document.getElementById("name");
   const emailEl = document.getElementById("email");
   const phoneEl = document.getElementById("phone");
@@ -22,10 +20,9 @@ document.addEventListener("DOMContentLoaded", async () => {
   const backBtn = document.getElementById("back-btn");
   const historyBtn = document.getElementById("history-btn");
 
-  // 🧠 Luôn lấy lại user mới nhất từ server
   try {
     const res = await fetch(
-      `https://smart-locker-kgnx.onrender.com/user/${user.id}`
+      `https://f-locker-backend.onrender.com/user/${user.id}`
     );
     const data = await res.json();
     if (res.ok && data.user) {
@@ -36,7 +33,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("Không thể load lại thông tin user:", err.message);
   }
 
-  // ✅ HIỂN THỊ THÊM THÔNG TIN MỚI
   nameEl.textContent = user.name || "";
   emailEl.textContent = user.email || "";
   phoneEl.textContent = user.phone || "";
@@ -47,7 +43,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (registeredLockerEl)
     registeredLockerEl.textContent = user.registeredLocker || "Chưa đăng ký tủ";
 
-  // ✅ CHO PHÉP CHỈNH SỬA ELEMENT MỚI
   changeBtn.addEventListener("click", () => {
     [
       nameEl,
@@ -66,7 +61,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     saveBtn.style.display = "inline-block";
   });
 
-  // ✅ LƯU TRƯỜNG MỚI KHI BẤM SAVE
   saveBtn.addEventListener("click", async () => {
     const newData = {
       name: nameEl.textContent.trim(),
@@ -83,7 +77,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     };
 
     try {
-      const res = await fetch("https://smart-locker-kgnx.onrender.com/update", {
+      const res = await fetch("https://f-locker-backend.onrender.com/update", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ id: user.id, ...newData }),
@@ -116,7 +110,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // (Các nút Back, Logout, History không thay đổi)
   backBtn.addEventListener("click", () => (window.location.href = "menu.html"));
   logoutBtn.addEventListener("click", () => {
     sessionStorage.removeItem("user");

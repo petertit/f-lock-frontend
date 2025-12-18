@@ -1,4 +1,3 @@
-// menu.js
 document.addEventListener("DOMContentLoaded", () => {
   const userRaw = sessionStorage.getItem("user");
   const formContainer = document.querySelector(".form-container");

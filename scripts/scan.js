@@ -1,5 +1,3 @@
-// backend/scan.js – FINAL (RasPi + Laptop + Phone)
-
 document.addEventListener("DOMContentLoaded", () => {
   const wrapper = document.querySelector(".face-scan-wrapper");
   const statusEl = document.querySelector("#status");
@@ -11,7 +9,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const btnSwitch = document.getElementById("btnSwitchCam");
   const controls = document.getElementById("cameraControls");
 
-  const BRIDGE_SERVER = "https://smart-locker-kgnx.onrender.com/raspi";
+  const BRIDGE_SERVER = "https://f-locker-backend.onrender.com/raspi";
   const RASPI_STREAM = "http://127.0.0.1:5000/video_feed";
 
   const userRaw = sessionStorage.getItem("user");

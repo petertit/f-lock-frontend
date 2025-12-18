@@ -1,4 +1,3 @@
-// history.js - Tải và hiển thị lịch sử Locker của người dùng
 document.addEventListener("DOMContentLoaded", () => {
   const historyList = document.getElementById("historyList");
   const historyLockerName = document.getElementById("historyLockerName");
@@ -6,10 +5,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!historyList) return;
 
-  // ✅  Sử dụng server Render
-  const BASE_URL = "https://smart-locker-kgnx.onrender.com";
+  const BASE_URL = "https://f-locker-backend.onrender.com";
 
-  // ✅  Lấy thông tin người dùng từ sessionStorage
   const userRaw = sessionStorage.getItem("user");
   const user = userRaw ? JSON.parse(userRaw) : null;
 
@@ -22,7 +19,6 @@ document.addEventListener("DOMContentLoaded", () => {
   historyLockerName.textContent = user.name + " History";
 
   async function fetchLockerHistory() {
-    // ✅  Gọi đến endpoint mới bằng User ID
     const HISTORY_URL = `${BASE_URL}/history/${user.id}`;
 
     try {
@@ -60,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       let actionText = "";
       let color = "";
-      // ✅ Cập nhật: Thêm Locker ID vào
+
       const lockerIdText = item.lockerId ? ` (Tủ ${item.lockerId})` : "";
 
       switch (item.action) {
@@ -90,7 +86,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // ✅ THÊM SỰ KIỆN CHO NÚT BACK
   backBtn.addEventListener("click", () => {
     window.location.href = "detail.html";
   });
