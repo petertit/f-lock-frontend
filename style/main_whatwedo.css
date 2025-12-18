@@ -1,0 +1,164 @@
+/* ===========================
+   WHAT WE DO SECTION
+=========================== */
+
+.what-we-do {
+  margin: 80px auto;
+  max-width: 1200px;
+  padding: 0 20px;
+  position: relative;
+  color: #fff;
+  padding-top: 0px;
+}
+
+/* ===== Header ===== */
+.what-we-do-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 40px;
+  position: relative;
+  z-index: 3; /* giữ header nổi lên trên ảnh */
+}
+
+.what-we-do h2 {
+  font-family: "Epilogue", sans-serif;
+  font-weight: 700;
+  font-size: 60px;
+  font-style: normal;
+  color: #0063ff;
+  text-align: left;
+  font-weight: 700;
+  color: #0063ff;
+  margin-bottom: 16px;
+}
+
+/* ===== Button Grid (2x2) ===== */
+.button-grid {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: 12px 20px;
+  position: relative;
+  z-index: 3; /* nút luôn nổi lên trên ảnh */
+}
+
+.button-grid button {
+  background: transparent;
+  border: 1px solid #0066ff;
+  border-radius: 20px;
+  padding: 6px 18px;
+  font-size: 14px;
+  color: #0066ff;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.button-grid button.active {
+  background: #0066ff;
+  color: #fff;
+}
+
+/* ===== Content Area ===== */
+.what-we-do-content {
+  position: relative; /* để ảnh tuyệt đối bám vào */
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* ===== List ===== */
+.what-we-do ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex: 1;
+  position: relative;
+  font-size: 22px;
+}
+
+/* Đường kẻ trên + dưới (kéo dài qua số) */
+.what-we-do ul::before,
+.what-we-do ul::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: #333;
+}
+
+.what-we-do ul::before {
+  top: 0;
+}
+.what-we-do ul::after {
+  bottom: 0;
+}
+
+/* Mỗi item */
+.what-we-do ul li {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-family: "Epilogue", sans-serif;
+  font-weight: 400;
+  font-size: 48px; /* chữ trong li */
+  padding: 20px 0;
+  position: relative;
+  color: #777;
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+/* Đường kẻ riêng từng dòng (sau số) */
+.what-we-do ul li::after {
+  content: "";
+  position: absolute;
+  left: 50px; /* bắt đầu sau số */
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: #333;
+}
+
+.what-we-do ul li:last-child::after {
+  display: none; /* bỏ đường cuối vì đã có ul::after */
+}
+
+/* Active item */
+.what-we-do ul li.active {
+  color: #fff;
+  opacity: 1;
+  font-weight: 600;
+}
+
+.what-we-do ul li.active::before {
+  content: "›";
+  position: absolute;
+  right: 10px;
+  font-size: 22px;
+  color: #fff;
+}
+
+/* Số thứ tự */
+.what-we-do .num {
+  width: 40px;
+  text-align: right;
+  color: #888;
+  font-family: "Epilogue", sans-serif;
+  font-weight: 400;
+  font-size: 30px; /* số */
+}
+
+/* ===== Image absolute ===== */
+.img-placeholder {
+  position: absolute;
+  right: 150px;
+  top: 50%;
+  transform: translateY(-50%); /* luôn căn giữa dọc */
+  z-index: 2;
+}
+
+.img-placeholder img {
+  width: 280px;
+  border-radius: 12px;
+  transition: transform 0.4s ease;
+}

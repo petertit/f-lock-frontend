@@ -1,0 +1,156 @@
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0px 100px;
+}
+.whoweare {
+  padding: 0px 130px;
+  margin-bottom: 20px;
+  font-family: "Epilogue", sans-serif;
+  font-weight: 700;
+  font-size: 60px;
+  font-style: normal;
+  color: #0063ff;
+  text-align: left;
+  font-weight: 700;
+  color: #0063ff;
+  margin-bottom: 16px;
+}
+#title {
+  font-family: "Epilogue", sans-serif;
+  font-weight: 700;
+  font-size: 96px;
+  font-style: normal;
+  color: #0063ff;
+  text-align: left;
+  margin-bottom: 400px;
+  margin-top: 0;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #333;
+  margin: 0 0 24px 0;
+  padding: 0;
+}
+.content {
+  display: flex; /* sắp xếp ngang */
+  justify-content: space-between; /* đẩy 2 khối ra 2 bên */
+  align-items: center;
+  gap: 40px; /* khoảng cách giữa description và info */
+  padding: 0px 130px;
+  margin-bottom: 40px;
+}
+
+.description {
+  font-family: "Epilogue", sans-serif;
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.6;
+  max-width: 800px;
+  color: #fff;
+  margin: 0;
+}
+
+.info {
+  font-family: "Epilogue", sans-serif;
+  display: flex;
+  gap: 40px;
+  font-size: 14px;
+  font-weight: 100;
+  color: #aaa;
+}
+
+.info strong {
+  color: #fff;
+  font-weight: 500;
+  margin-top: 5px;
+}
+
+/* 4 cái ô của tk đầu bùi quý */
+.work-section-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+
+  padding: 80px 0;
+}
+
+.work-section-wrapper::before,
+.work-section-wrapper::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  width: 100%;
+  height: 25%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: center;
+  z-index: 0;
+  opacity: 1;
+}
+
+.work-section-wrapper::before {
+  top: 0;
+  background-image: url("../design/SOURCE_IMAGE/Group24.png");
+}
+
+.work-section-wrapper::after {
+  bottom: 0;
+  background-image: url("../design/SOURCE_IMAGE/Group25.png");
+}
+
+.work-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 50px;
+}
+
+.card {
+  background-image: url(../design/SOURCE_IMAGE/8.png);
+  color: white;
+  width: 250px;
+  height: 300px;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 0 10px rgba(41, 7, 162, 0.6), 0 0 20px rgba(16, 7, 50, 0.4);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card:hover {
+  transform: scale(1.08);
+  box-shadow: 0 15px 30px rgba(0, 102, 255, 0.6);
+}
+
+.card h3 {
+  font-size: 22px;
+  margin: 10px 0;
+  color: white;
+}
+
+.card p {
+  font-size: 14px;
+  color: #ddd;
+}
+
+.number {
+  font-weight: bold;
+  font-size: 18px;
+  color: #aaa;
+}
+
+.arrow {
+  font-size: 30px;
+  color: white;
+}

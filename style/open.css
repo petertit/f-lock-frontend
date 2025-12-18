@@ -1,0 +1,76 @@
+/* header */
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0px 100px;
+}
+.header {
+  padding: 24px 30px 20px;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#row1 {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: 40px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+#row3 {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #aaa;
+}
+.face-grid-section {
+  background: black; /* nền riêng cho section này */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 0;
+}
+
+.face-grid-section .grid-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 90px;
+}
+
+.face-grid-section .grid-item {
+  width: 250px;
+  height: 250px;
+  background: url("../design/SOURCE_IMAGE/scan.jpg") no-repeat center;
+  background-size: cover;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  border-radius: 10px;
+  box-shadow: 0 0 20px rgba(0, 99, 255, 0.6);
+  transition: transform 0.3s ease;
+}
+
+.face-grid-section .grid-item:hover {
+  transform: scale(1.05);
+}
+
+.face-grid-section .grid-item span {
+  color: white;
+  font-size: 22px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  text-shadow: 0 0 5px #00f;
+}
+
+.face-grid-section .grid-item {
+  text-decoration: none;
+  color: inherit;
+}

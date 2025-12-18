@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,viewport-fit=cover"
+    />
+    <!-- font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Rubik+Mono+One&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+      rel="stylesheet"
+    />
+    <!-- css -->
+    <title>Sign up - F-LOCK</title>
+    <link rel="stylesheet" href="./style/main_header.css" />
+    <link rel="stylesheet" href="./style/main_footer.css" />
+    <link rel="stylesheet" href="./style/logon.css" />
+    <link rel="stylesheet" href="./style/mobile.css" />
+  </head>
+  <body>
+    <!-- menu -->
+    <section class="o">
+      <div class="menu">
+        <h2>F-LOCK</h2>
+        <a href="./menu.html">
+          <img
+            src="./design/SOURCE_IMAGE/Menu.png"
+            alt="menu"
+            class="icon_menu"
+          />
+        </a>
+      </div>
+      <hr />
+    </section>
+    <!-- header -->
+    <div class="header">
+      <p id="row1">SIGN IN</p>
+      <h1>Ready to take the next step?</h1>
+      <p id="row3">Fill out the form to start your journey with us</p>
+    </div>
+
+    <!-- Form đăng nhập -->
+    <div class="register-container login-container">
+      <div class="right-side">
+        <form id="loginForm">
+          <div class="form-group full">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required />
+          </div>
+
+          <div class="form-group full">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required />
+          </div>
+
+          <button type="submit" class="btn">LOG ON</button>
+          <div class="register-link">
+            If you don’t have an account, please
+            <a href="./register.html">Register</a>
+          </div>
+        </form>
+      </div>
+    </div>
+    <script src="./scripts/logon.js"></script>
+  </body>
+
+  <!-- footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <h2 id="end_F">F-LOCK</h2>
+        <p>
+          Tủ khóa thông minh của chúng tôi mang đến sự an toàn và tiện lợi. Hãy
+          biến việc lưu trữ hằng ngày thành một trải nghiệm thông minh và bảo
+          mật hơn!
+        </p>
+
+        <nav class="footer-nav">
+          <a href="./index.html">Home</a>
+          <a href="./guild.html">User Guide</a>
+          <a href="./open.html">Open Locker</a>
+          <a href="./about_us.html">About</a>
+          <a href="./face_res.html">ID</a>
+        </nav>
+      </div>
+
+      <div class="footer-right">
+        <p>
+          Are you ready to unlock a smarter and more secure experience with our
+          device?
+        </p>
+        <p>
+          Drop us a line at <br />
+          <a href="mailto:aicungvay321@gmail.com" class="email-link">
+            aicungvay321@gmail.com
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <hr class="footer-line" />
+    <p class="copyright">© 2025 F-LOCK. All rights reserved.</p>
+  </footer>
+</html>

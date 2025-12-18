@@ -1,0 +1,176 @@
+body {
+  background: #000;
+  color: #fff;
+  font-family: "Epilogue", sans-serif;
+  margin: 0;
+  padding: 0 100px;
+}
+/* Container chung */
+.page-wrapper {
+  width: 80%; /* cùng độ rộng với video */
+  margin: 0 auto; /* căn giữa */
+}
+
+/* Menu */
+.menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 0;
+  width: 100%; /* ăn theo page-wrapper */
+}
+
+/* Video giữ nguyên */
+.video-frame {
+  width: 100%; /* ăn theo page-wrapper */
+  margin: 0 auto;
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+}
+
+/* Shared heading styles */
+.sub-heading {
+  text-align: center;
+  color: #1a73e8;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.main-heading {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 400;
+  margin: 0;
+  color: #fff;
+}
+
+.desc {
+  text-align: center;
+  color: #aaa;
+  margin-bottom: 30px;
+}
+
+/* Video Section */
+.video-frame {
+  width: 80%;
+  margin: 0 auto;
+  position: relative;
+  border-radius: 15px;
+  overflow: hidden;
+}
+.video-frame img {
+  width: 100%;
+  display: block;
+  border-radius: 15px;
+}
+.play-btn {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 40px;
+  color: #000;
+  background: #1a73e8;
+  border-radius: 50%;
+  width: 60px;
+  height: 60px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Packages Section */
+.card-container {
+  display: flex;
+  justify-content: center;
+  gap: 40px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.card {
+  background: #000; /* nền đen */
+  border-radius: 25px;
+  padding: 40px 30px;
+  width: 300px;
+  height: 550px;
+  text-align: left;
+  border: 1px solid rgba(0, 102, 255, 0.6); /* viền xanh */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  position: relative;
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+/* Hover: outer + inner shadow */
+.card:hover {
+  transform: translateY(-10px);
+  box-shadow: 0 0 25px rgba(65, 35, 185, 0.7),
+    /* outer glow */ inset 0 0 25px rgba(0, 72, 255, 0.4); /* inner glow */
+}
+
+/* Icon D.png */
+.card-icon {
+  width: 60px;
+  margin-bottom: 20px;
+}
+
+/* Heading */
+.card h3 {
+  font-size: 26px;
+  font-weight: 800;
+  margin: 5px 0;
+  line-height: 1.2;
+}
+.card .blue {
+  color: #1a73e8;
+}
+.card .title {
+  font-size: 18px;
+  font-weight: 400;
+  margin: 0;
+}
+.card .include {
+  font-size: 14px;
+  color: #1a73e8;
+  font-weight: 600;
+  margin-top: 5px;
+}
+
+/* Gạch ngang */
+.card hr {
+  border: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  margin: 15px 0;
+}
+
+/* Danh sách */
+.card ul {
+  list-style: none;
+  padding: 0;
+}
+.card ul li {
+  font-size: 15px;
+  margin-bottom: 10px;
+  position: relative;
+  padding-left: 22px;
+}
+.card ul li::before {
+  content: "✔";
+  position: absolute;
+  left: 0;
+  color: #1a73e8;
+  font-size: 14px;
+}
+
+/* Ngôi sao */
+.star {
+  color: #1a73e8;
+  font-size: 20px;
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+}

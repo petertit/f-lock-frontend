@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,viewport-fit=cover"
+    />
+    <!-- font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Rubik+Mono+One&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+      rel="stylesheet"
+    />
+    <title>Register - Start Your Journey</title>
+    <!-- css -->
+    <link rel="stylesheet" href="./style/main_header.css" />
+    <link rel="stylesheet" href="./style/register.css" />
+    <link rel="stylesheet" href="./style/main_footer.css" />
+    <link rel="stylesheet" href="./style/mobile.css" />
+  </head>
+  <body class="page-register">
+    <!-- menu -->
+    <section class="o">
+      <div class="menu">
+        <h2>F-LOCK</h2>
+        <a href="./menu.html">
+          <img
+            src="./design/SOURCE_IMAGE/Menu.png"
+            alt="menu"
+            class="icon_menu"
+          />
+        </a>
+      </div>
+      <hr />
+    </section>
+    <!-- header -->
+    <div class="header">
+      <p id="row1">Register</p>
+      <h1>Ready to take the next step?</h1>
+
+      <p id="row3">Fill out the form to start your journey with us</p>
+    </div>
+    <!-- Container -->
+    <div class="register-container">
+      <!-- Left -->
+      <div class="left-side">
+        <a href="./face_res.html"
+          ><img src="./design/SOURCE_IMAGE/scan.jpg" alt="Scan Face"
+        /></a>
+      </div>
+
+      <!-- Right -->
+      <div class="right-side">
+        <form id="registerForm">
+          <div class="form-row">
+            <div class="form-group">
+              <label for="name">Name</label>
+              <input type="text" id="name" name="name" required />
+            </div>
+
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" required />
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="phone">Phone Number</label>
+              <input type="tel" id="phone" name="phone" required />
+            </div>
+
+            <div class="form-group">
+              <label for="password">Password</label>
+              <input type="password" id="password" name="password" required />
+            </div>
+          </div>
+
+          <div class="form-group full">
+            <label for="hint">Hint Password</label>
+            <input
+              type="text"
+              id="hint"
+              name="hint"
+              placeholder="Write your password hint.."
+            />
+          </div>
+
+          <div class="captcha-real">
+            <div class="captcha-row">
+              <canvas
+                id="captchaCanvas"
+                width="200"
+                height="70"
+                aria-label="captcha image"
+              ></canvas>
+              <div class="captcha-controls">
+                <button type="button" id="refreshCaptcha" class="btn small">
+                  ↻
+                </button>
+                <button type="button" id="audioCaptcha" class="btn small">
+                  🔊
+                </button>
+              </div>
+            </div>
+            <label for="captchaInput" class="captcha-label"
+              >Enter the code above</label
+            >
+            <input
+              type="text"
+              id="captchaInput"
+              name="captchaInput"
+              placeholder="Enter captcha"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn">SAVE</button>
+          <p class="login-hint">
+            If you already have an account, please click
+            <a href="./logon.html">log on</a>
+          </p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ... script ... -->
+
+    <script src="./scripts/register.js"></script>
+  </body>
+  <!-- footer -->
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <h2 id="end_F">F-LOCK</h2>
+        <p>
+          Tủ khóa thông minh của chúng tôi mang đến sự an toàn và tiện lợi. Hãy
+          biến việc lưu trữ hằng ngày thành một trải nghiệm thông minh và bảo
+          mật hơn!
+        </p>
+        <nav class="footer-nav">
+          <a href="./index.html">Home</a>
+          <a href="./guild.html">User Guide</a>
+          <a href="./open.html">Open Locker</a>
+          <a href="./about_us.html">About</a>
+          <a href="./face_res.html">ID</a>
+        </nav>
+      </div>
+
+      <div class="footer-right">
+        <p>
+          Are you ready to unlock a smarter and more secure experience with our
+          device?
+        </p>
+        <p>
+          Drop us a line at <br />
+          <a href="mailto:aicungvay321@gmail.com" class="email-link">
+            aicungvay321@gmail.com
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <hr class="footer-line" />
+    <p class="copyright">© 2025 F-LOCK. All rights reserved.</p>
+  </footer>
+</html>

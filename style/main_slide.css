@@ -1,0 +1,117 @@
+.location-slider {
+  width: 100%;
+  margin: 0 auto;
+  padding: 30px 0;
+  background: transparent;
+}
+
+.slider-viewport {
+  max-width: 2200px;
+  width: 100%;
+  margin: 0 auto;
+  overflow: hidden;
+  position: relative;
+}
+
+.slider-track {
+  display: flex;
+  gap: 10px;
+  transition: transform 0.5s ease;
+}
+
+.slide {
+  height: 100vh; /* Toàn bộ chiều cao màn hình */
+
+  width: 721.5px;
+  height: 521.25px;
+  border-radius: 30px;
+  overflow: hidden;
+  flex-shrink: 0;
+  transform: scale(0.8);
+  transition: all 0.4s ease;
+  position: relative;
+
+  background-image: url("../design/SOURCE_IMAGE/BBB-01.png");
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  background-size: cover;
+  background-position: center;
+
+  opacity: 0.3;
+  filter: brightness(60%);
+}
+
+/* Slide active */
+.slide.active {
+  opacity: 1;
+  transform: scale(1.2);
+  z-index: 2;
+  filter: brightness(100%);
+
+  border: 1px solid #2e38ab; /* viền trắng rõ hơn */
+  box-shadow: 0 0 10px rgba(41, 7, 162, 0.6), 0 0 20px rgba(16, 7, 50, 0.4);
+  margin-top: 70px;
+  margin-bottom: 70px;
+}
+
+/* Overlay text giống trước */
+.slide .overlay {
+  position: absolute;
+  inset: 0;
+  color: white;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  border-radius: 20px;
+}
+.slide .overlay h2 {
+  font-size: 96px;
+  margin: 0;
+  font-weight: 700;
+}
+.slide .overlay p {
+  font-size: 20px;
+  letter-spacing: 2px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
+.slide .overlay .arrow {
+  position: absolute;
+  right: 24px;
+  bottom: 18px;
+  font-size: 28px;
+}
+
+/* Controls */
+.slider-controls {
+  display: flex;
+  justify-content: center;
+  gap: 100px;
+  margin-top: 18px;
+}
+.slider-controls button {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  width: 56px;
+  height: 56px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.slider-controls button img {
+  width: 70px;
+  height: 70px;
+  filter: brightness(0) saturate(100%) invert(88%) sepia(0%) saturate(0%)
+    hue-rotate(203deg) brightness(50%) contrast(100%);
+  transition: filter 0.3s ease;
+}
+
+.slider-controls button:hover img {
+  filter: brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%)
+    hue-rotate(203deg) brightness(100%) contrast(100%);
+  scale: 1.2;
+}

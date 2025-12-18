@@ -1,0 +1,90 @@
+/* header */
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0px 100px;
+}
+.header {
+  padding: 24px 30px 20px;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#row1 {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: 40px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+#row3 {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #aaa;
+}
+
+/* content */
+.team-section {
+  background: black;
+  padding: 60px 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.team-grid {
+  display: flex;
+  grid-template-rows: auto auto;
+  gap: 40px;
+  max-width: 1200px;
+}
+
+.team-card {
+  width: 250px;
+  color: white;
+  text-align: left;
+}
+
+.team-card img {
+  width: 100%;
+  border-radius: 15px;
+  display: block;
+}
+
+.team-card h3 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 12px 0 4px;
+}
+
+.team-card .role {
+  font-size: 15px;
+  color: #0063ff;
+  font-weight: 500;
+}
+
+.team-card img {
+  width: 100%;
+  border-radius: 15px;
+  display: block;
+  filter: grayscale(100%); /* chuyển thành ảnh xám */
+  transition: filter 0.3s ease;
+}
+
+/* Nếu muốn ảnh trở lại màu khi hover */
+.team-card img:hover {
+  filter: grayscale(0%);
+}
+.team-card:hover {
+  transform: translateY(-10px);
+  transition: transform 0.3s ease;
+}

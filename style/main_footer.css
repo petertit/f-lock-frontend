@@ -1,0 +1,74 @@
+.footer {
+  background: #0063ff; /* xanh giống hình */
+  color: white;
+  padding: 40px 60px;
+  margin-top: 60px;
+}
+
+.footer-content {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 40px;
+}
+
+#end_F {
+  font-family: "Rubik Mono One", sans-serif;
+  font-size: 32px;
+  margin-bottom: 20px;
+  color: white;
+}
+
+.footer-left p {
+  max-width: 400px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+}
+
+.footer-nav {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-nav a {
+  color: white;
+  text-decoration: none;
+  font-size: 14px;
+}
+
+.footer-nav a:hover {
+  text-decoration: underline;
+}
+
+.footer-right {
+  max-width: 400px;
+}
+
+.footer-right p {
+  margin: 10px 0;
+  font-size: 15px;
+}
+
+.footer-right .email-link {
+  font-size: 22px;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+}
+
+.footer-right .email-link:hover {
+  text-decoration: underline;
+}
+
+.footer-line {
+  margin: 40px 0 20px;
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.copyright {
+  font-size: 14px;
+  text-align: center;
+  opacity: 0.8;
+}

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,viewport-fit=cover"
+    />
+    <title>Face Recognition - F-LOCK</title>
+
+    <!-- Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600&family=Rubik:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="./style/main_header.css" />
+    <link rel="stylesheet" href="./style/main_footer.css" />
+    <link rel="stylesheet" href="./style/scan.css" />
+
+    <link rel="stylesheet" href="./style/mobile.css" />
+  </head>
+
+  <body>
+    <!-- Header -->
+    <section class="o">
+      <div class="menu">
+        <h2>F-LOCK</h2>
+        <a href="./menu.html">
+          <img
+            src="./design/SOURCE_IMAGE/Menu.png"
+            alt="menu"
+            class="icon_menu"
+          />
+        </a>
+      </div>
+      <hr />
+    </section>
+
+    <div class="header">
+      <p id="row1">Face Recognition</p>
+      <h1>Smart Locker Scan</h1>
+      <p id="row3">Look at the camera to unlock your locker</p>
+    </div>
+
+    <div class="face-scan-wrapper" style="text-align: center">
+      <img
+        id="raspiCamera"
+        style="display: none; max-width: 90%; border-radius: 12px"
+        alt="Raspberry Pi Camera"
+      />
+
+      <video
+        id="userCamera"
+        autoplay
+        playsinline
+        muted
+        style="display: none; max-width: 90%; border-radius: 12px"
+      ></video>
+
+      <div
+        id="cameraControls"
+        style="
+          margin-top: 12px;
+          display: none;
+          gap: 10px;
+          justify-content: center;
+          flex-wrap: wrap;
+        "
+      >
+        <button id="btnStartCam">Bật camera</button>
+        <button id="btnSwitchCam">Đổi cam</button>
+      </div>
+    </div>
+
+    <div class="more-info">
+      <h2 id="status">🔄 Connecting to Raspberry Pi...</h2>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./scripts/scan.js"></script>
+    <script src="./scripts/open.js"></script>
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-left">
+          <h2 id="end_F">F-LOCK</h2>
+          <p>
+            Tủ khóa thông minh của chúng tôi mang đến sự an toàn và tiện lợi.
+            Hãy biến việc lưu trữ hằng ngày thành một trải nghiệm thông minh và
+            bảo mật hơn!
+          </p>
+          <nav class="footer-nav">
+            <a href="./index.html">Home</a>
+            <a href="./guild.html">User Guide</a>
+            <a href="./open.html">Open Locker</a>
+            <a href="./about_us.html">About</a>
+            <a href="./face_res.html">ID</a>
+          </nav>
+        </div>
+
+        <div class="footer-right">
+          <p>
+            Are you ready to unlock a smarter and more secure experience with
+            our device?
+          </p>
+          <p>
+            Drop us a line at <br />
+            <a href="mailto:aicungvay321@gmail.com" class="email-link">
+              aicungvay321@gmail.com
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <hr class="footer-line" />
+      <p class="copyright">© 2025 F-LOCK. All rights reserved.</p>
+    </footer>
+  </body>
+</html>

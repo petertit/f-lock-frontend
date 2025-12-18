@@ -1,0 +1,16 @@
+.history-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 15px;
+  margin-bottom: 8px;
+  background-color: #1a1a1a;
+  border-radius: 8px;
+  font-size: 15px;
+}
+.history-list-span-action {
+  font-weight: 600;
+}
+.history-list-span-date {
+  color: #aaa;
+}

@@ -1,0 +1,536 @@
+/* =========================================================
+   F-LOCK MOBILE (FINAL MERGED)
+   - No scale / no zoom
+   - Shrink each component, fit phone screen
+   - Overrides ALL pages/styles you uploaded
+   Breakpoints:
+   - <= 768px (phone + small tablets)
+   - <= 390px (small phones)
+   ========================================================= */
+
+@media (max-width: 768px) {
+  /* -------------------------
+     GLOBAL BASE OVERRIDES
+     ------------------------- */
+  html,
+  body {
+    width: 100%;
+    overflow-x: hidden;
+  }
+
+  /* Many pages use padding: 0 100px; override globally */
+  body {
+    padding: 0 16px !important;
+    margin: 0;
+  }
+
+  /* Section spacing (reduce vertical heaviness) */
+  section {
+    padding: 32px 0 !important;
+  }
+
+  /* Typography scale down */
+  h1 {
+    font-size: 24px !important;
+    line-height: 1.2 !important;
+  }
+  h2 {
+    font-size: 20px !important;
+    line-height: 1.25 !important;
+  }
+  h3 {
+    font-size: 17px !important;
+    line-height: 1.25 !important;
+  }
+  p {
+    font-size: 14px !important;
+    line-height: 1.45 !important;
+  }
+
+  /* Inputs: prevent iOS zoom + tap friendly */
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+    min-height: 44px;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  button,
+  .btn,
+  a.btn,
+  .button,
+  a.button {
+    min-height: 44px;
+    padding: 10px 14px !important;
+    border-radius: 14px !important;
+    font-size: 15px !important;
+  }
+
+  /* Header blocks used across pages */
+  .header {
+    padding: 16px 10px !important;
+  }
+  #row1 {
+    font-size: 12px !important;
+  }
+  #row3 {
+    font-size: 14px !important;
+  }
+
+  /* -------------------------
+     INDEX / MAIN (main.css + main_* css)
+     ------------------------- */
+
+  /* main.css: .whoweare padding/font is huge */
+  .whoweare {
+    padding: 0 !important;
+    font-size: 28px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* main.css: #title huge + margin-bottom huge */
+  #title {
+    font-size: 36px !important;
+    line-height: 1.15 !important;
+    margin-bottom: 80px !important;
+    text-align: left !important;
+  }
+
+  /* main.css: content blocks -> stack */
+  .content {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 16px !important;
+    padding: 0 !important;
+  }
+
+  .description {
+    font-size: 16px !important;
+    line-height: 1.6 !important;
+    max-width: 100% !important;
+  }
+
+  .info {
+    gap: 18px !important;
+    flex-wrap: wrap !important;
+    font-size: 12px !important;
+  }
+
+  /* Work section / cards: stack vertically; hide arrows */
+  .work-section {
+    flex-direction: column !important;
+    gap: 18px !important;
+    padding: 0 !important;
+  }
+  .arrow {
+    display: none !important;
+  }
+  .card {
+    width: 100% !important;
+    height: auto !important;
+    padding: 18px !important;
+    border-radius: 16px !important;
+  }
+
+  /* main_whatwedo.css: header layout + list + image absolute */
+  .what-we-do {
+    margin: 36px 0 !important;
+  }
+  .what-we-do-header {
+    flex-direction: column !important;
+    gap: 14px !important;
+    align-items: flex-start !important;
+  }
+  .what-we-do h2 {
+    font-size: 28px !important;
+  }
+  .button-grid {
+    width: 100% !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .what-we-do-content {
+    flex-direction: column !important;
+    gap: 18px !important;
+  }
+  .what-we-do ul li {
+    font-size: 18px !important;
+    padding: 12px 0 !important;
+  }
+  .what-we-do .num {
+    font-size: 14px !important;
+    width: 24px !important;
+  }
+  .img-placeholder {
+    position: static !important;
+    transform: none !important;
+    margin-top: 14px !important;
+    text-align: center !important;
+  }
+  .img-placeholder img {
+    width: 180px !important;
+    max-width: 70vw !important;
+    height: auto !important;
+  }
+
+  /* main_slide.css: remove scale, fit slide to viewport */
+  .slide {
+    width: 90vw !important;
+    height: 55vw !important;
+    min-height: 220px !important;
+    transform: none !important;
+    border-radius: 20px !important;
+  }
+  .slide.active {
+    transform: none !important;
+    margin: 0 !important;
+  }
+  .slide .overlay h2 {
+    font-size: 42px !important;
+    line-height: 1 !important;
+  }
+  .slider-controls {
+    gap: 36px !important;
+  }
+
+  /* main_header/footer: stack footer content */
+  .footer {
+    padding: 28px 16px !important;
+  }
+  .footer-content {
+    flex-direction: column !important;
+    gap: 20px !important;
+    align-items: flex-start !important;
+  }
+  #end_F {
+    font-size: 26px !important;
+  }
+  .footer-nav {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+  }
+  .footer-nav a {
+    font-size: 14px !important;
+  }
+  .footer-right .email-link {
+    font-size: 18px !important;
+    word-break: break-word !important;
+  }
+
+  /* -------------------------
+     MENU PAGE (menu.css)
+     ------------------------- */
+  /* body in menu.css is centered with padding:40px; override to mobile-friendly */
+  body {
+    /* keep global padding already set */
+  }
+
+  .container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .left-side {
+    width: 100% !important;
+    padding: 24px 16px !important;
+    border-right: none !important;
+    border-radius: 18px 18px 0 0 !important;
+  }
+
+  .right-side,
+  .form-container {
+    width: 100% !important;
+    padding: 22px 16px !important;
+    border-radius: 0 0 18px 18px !important;
+    text-align: center !important;
+    align-items: center !important;
+  }
+
+  .logo {
+    font-size: 28px !important;
+    margin-bottom: 18px !important;
+  }
+  .footer-nav a {
+    font-size: 14px !important;
+  }
+  .headline {
+    font-size: 13px !important;
+  }
+  .subheadline {
+    font-size: 22px !important;
+    line-height: 1.2 !important;
+  }
+
+  .button-group {
+    gap: 14px !important;
+    margin-top: 18px !important;
+  }
+  .signup-btn,
+  .signin-btn {
+    font-size: 15px !important;
+    padding: 10px 18px !important;
+    border-radius: 16px !important;
+  }
+
+  /* -------------------------
+     LOGON (logon.css)
+     ------------------------- */
+  .login-container {
+    width: 100% !important;
+    max-width: 420px !important;
+    margin: 18px auto !important;
+    padding: 22px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  /* -------------------------
+     REGISTER (register.css)
+     ------------------------- */
+  .register-container {
+    width: 100% !important;
+    margin: 16px auto !important;
+  }
+
+  .register-container .left-side,
+  .register-container .right-side {
+    width: 100% !important;
+    padding: 16px !important;
+  }
+
+  .register-container .left-side img {
+    max-width: 260px !important;
+    height: auto !important;
+  }
+
+  .form-row {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+
+  label {
+    font-size: 12px !important;
+  }
+
+  /* captcha canvas if exists */
+  #captchaCanvas {
+    width: 150px !important;
+    height: 52px !important;
+  }
+
+  /* -------------------------
+     OPEN LOCKER (open.css)
+     ------------------------- */
+  .face-grid-section {
+    padding: 32px 0 !important;
+  }
+
+  .face-grid-section .grid-container {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .face-grid-section .grid-item {
+    width: 100% !important;
+    height: 130px !important;
+    border-radius: 12px !important;
+  }
+
+  .face-grid-section .grid-item span {
+    font-size: 18px !important;
+  }
+
+  .close-btn,
+  .unregister-btn {
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+    width: calc(100% - 20px) !important;
+    max-width: 180px !important;
+  }
+
+  /* -------------------------
+     SCAN (scan.css)
+     ------------------------- */
+  .face-scan-wrapper {
+    min-height: unset !important;
+    padding: 20px 0 !important;
+    flex-direction: column !important;
+    gap: 14px !important;
+  }
+
+  #cameraPreview {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 60vh !important;
+    border-radius: 14px !important;
+  }
+
+  .face_scan {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 60vh !important;
+    border-radius: 14px !important;
+  }
+
+  /* -------------------------
+     FACE PAGES (face_id.css / face_log.css / face_res.css)
+     ------------------------- */
+  /* Many face pages use similar layout blocks and big paddings */
+  .team-section {
+    padding: 30px 0 !important;
+  }
+
+  .team-grid {
+    flex-direction: column !important;
+    gap: 18px !important;
+    align-items: center !important;
+  }
+
+  .team-card {
+    width: 100% !important;
+    max-width: 340px !important;
+    margin: 0 auto !important;
+    padding: 16px !important;
+    border-radius: 16px !important;
+    text-align: center !important;
+  }
+
+  .team-card img {
+    width: 100% !important;
+    height: auto !important;
+    border-radius: 12px !important;
+  }
+
+  /* -------------------------
+     HISTORY (history.html / history list styles)
+     ------------------------- */
+  .history-list {
+    max-height: 55vh !important;
+    font-size: 14px !important;
+  }
+
+  /* mobile-friendly list row: action on top, date below */
+  .history-list li {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    justify-content: flex-start !important;
+    gap: 6px !important;
+    padding: 12px 14px !important;
+  }
+
+  .history-list-span-action {
+    font-size: 15px !important;
+    font-weight: 600 !important;
+  }
+
+  .history-list-span-date {
+    font-size: 12px !important;
+    color: #888 !important;
+  }
+
+  /* -------------------------
+     ABOUT US (about_us.css)
+     ------------------------- */
+  .team-grid {
+    /* already stacked; if some pages still grid, allow 2 cols */
+  }
+
+  /* In case about page uses grid columns */
+  .team-grid.grid,
+  .team-grid.is-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 16px !important;
+  }
+
+  /* remove odd/even transforms if any */
+  .team-card:nth-child(odd),
+  .team-card:nth-child(even) {
+    transform: none !important;
+  }
+
+  /* -------------------------
+     DETAIL PAGE (detail.css)
+     ------------------------- */
+  /* Make detail sections stack and fit */
+  .detail-container,
+  .detail-content {
+    width: 100% !important;
+    padding: 16px !important;
+  }
+
+  /* -------------------------
+     GUILD / SERVICES (guild.css)
+     ------------------------- */
+  .page-wrapper {
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .video-frame {
+    width: 100% !important;
+    height: auto !important;
+  }
+
+  .card-container {
+    flex-direction: column !important;
+    gap: 18px !important;
+  }
+
+  .card {
+    width: 100% !important;
+    height: auto !important;
+    padding: 22px 18px !important;
+  }
+
+  .play-btn {
+    width: 48px !important;
+    height: 48px !important;
+    font-size: 24px !important;
+  }
+
+  /* -------------------------
+     PASSCODE PAGES (pass_lock.css / pass_lock_login.css)
+     ------------------------- */
+  .password-card,
+  .pass-card,
+  .pass-container {
+    width: 100% !important;
+    max-width: 420px !important;
+    margin: 18px auto !important;
+    padding: 20px 16px !important;
+    border-radius: 16px !important;
+  }
+
+  .password-card h1,
+  .pass-card h1 {
+    font-size: 22px !important;
+  }
+
+  /* -------------------------
+     Small UX improvements
+     ------------------------- */
+  a,
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Small phones */
+@media (max-width: 390px) {
+  body {
+    padding: 0 14px !important;
+  }
+  h1 {
+    font-size: 22px !important;
+  }
+  #title {
+    font-size: 32px !important;
+  }
+  .slide .overlay h2 {
+    font-size: 36px !important;
+  }
+  .face-grid-section .grid-item {
+    height: 120px !important;
+  }
+}

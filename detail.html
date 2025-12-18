@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,viewport-fit=cover"
+    />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Epilogue:wght@400;600&family=Rubik:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./style/detail.css" />
+    <link rel="stylesheet" href="./style/mobile.css" />
+    <title>Account Detail</title>
+  </head>
+  <body>
+    <div class="container">
+      <div class="left-side">
+        <div class="logo">SMART BOX</div>
+        <div class="footer-nav">
+          <button id="change-btn" class="menu-btn">Change</button>
+          <button id="history-btn" class="menu-btn">History</button>
+          <button id="back-btn" class="menu-btn">Back to Menu</button>
+          <button id="logout-btn" class="logout-btn">Log Out</button>
+        </div>
+      </div>
+
+      <div class="right-side">
+        <div class="form-container">
+          <h1 class="headline">Welcome to SMART BOX</h1>
+          <h2 class="subheadline">Account Details</h2>
+
+          <div class="account-info">
+            <p><strong>Name:</strong> <span id="name"></span></p>
+            <p><strong>Email:</strong> <span id="email"></span></p>
+            <p><strong>Phone Number:</strong> <span id="phone"></span></p>
+            <p><strong>Password:</strong> <span id="password"></span></p>
+            <p><strong>Hint Password:</strong> <span id="hint"></span></p>
+            <p><strong>Locker Code:</strong> <span id="lockerCode"></span></p>
+            <p>
+              <strong>Registered Locker:</strong>
+              <span id="registeredLocker"></span>
+            </p>
+          </div>
+
+          <button id="save-btn" class="menu-btn" style="display: none">
+            Save
+          </button>
+        </div>
+      </div>
+    </div>
+    <!-- scripts -->
+    <script src="./scripts/detail.js"></script>
+  </body>
+</html>

@@ -1,0 +1,76 @@
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0 100px;
+}
+
+/* Header */
+.header {
+  padding: 24px 30px 20px;
+  text-align: center;
+}
+#row1 {
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: 40px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+#row3 {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #aaa;
+}
+
+/* Face scan layout */
+.face-scan-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 80vh;
+}
+
+.face-scan-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 40px; /* khoảng cách giữa ảnh và nút */
+}
+
+.face_scan {
+  width: 800px;
+  height: 800px;
+  border-radius: 15px;
+  border: 2px solid #1a73e8;
+  object-fit: cover;
+  box-shadow: 0 0 20px rgba(26, 115, 232, 0.4);
+}
+
+/* Take button */
+.take-btn {
+  background-color: transparent;
+  color: #1a73e8;
+  border: 2px solid #1a73e8;
+  font-size: 28px;
+  padding: 12px 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.take-btn:hover {
+  background-color: #1a73e8;
+  color: #fff;
+  box-shadow: 0 0 20px #1a73e8;
+}
+
+/* Footer fix */
+footer {
+  margin-top: 50px;
+}

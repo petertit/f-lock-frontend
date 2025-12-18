@@ -1,0 +1,138 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Arial, sans-serif;
+}
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0px 100px;
+}
+/* Menu cố định trên đầu trang */
+.menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 50px;
+}
+.icon_menu {
+  display: block;
+  margin-bottom: 30px;
+  cursor: pointer;
+}
+
+.logo {
+  font-family: "Rubik Mono One", monospace;
+  font-weight: 700;
+  font-size: 24px;
+  color: #0063ff;
+  margin: 0;
+}
+
+/* header */
+
+.header {
+  padding: 24px 30px 20px;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#row1 {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: 40px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+#row3 {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #aaa;
+}
+/* container nhỏ gọn hơn cho login */
+.login-container {
+  justify-content: center;
+  align-items: center;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 40px;
+  border-radius: 10px;
+  border: 1px solid #222;
+  background: #0b0b0b;
+}
+
+/* căn giữa text */
+.login-container form {
+  width: 100%;
+}
+
+.login-container .form-group {
+  margin-bottom: 25px;
+}
+
+.login-container label {
+  font-size: 14px;
+  color: #fff;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.login-container input {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid #555;
+  color: #fff;
+  padding: 12px 0;
+  font-size: 16px;
+  width: 100%;
+}
+
+.login-container input:focus {
+  border-bottom: 1px solid #1a73e8;
+  outline: none;
+}
+
+.login-container .btn {
+  display: block;
+  margin: 30px auto 0;
+  background-color: #0063ff;
+  color: white;
+  border: none;
+  padding: 14px 30px;
+  border-radius: 25px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-container .btn:hover {
+  background-color: #0051d4;
+}
+/* Link dưới form login */
+.login-container .register-link {
+  margin-top: 20px;
+  font-size: 14px;
+  text-align: center;
+  color: #aaa;
+}
+
+.login-container .register-link a {
+  color: #0063ff; /* xanh nổi bật */
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.login-container .register-link a:hover {
+  text-decoration: underline;
+}

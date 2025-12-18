@@ -1,0 +1,64 @@
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: "Rubik", sans-serif;
+  margin: 0;
+  padding: 0px 100px;
+}
+.header {
+  padding: 24px 30px 20px;
+  text-align: center;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+#row1 {
+  font-weight: 600;
+  color: #1a73e8;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.header h1 {
+  font-size: 40px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
+#row3 {
+  font-size: 16px;
+  line-height: 1.4;
+  color: #aaa;
+}
+
+.face-scan-wrapper {
+  display: flex;
+  justify-content: center; /* căn giữa ngang */
+  align-items: center; /* căn giữa dọc */
+  width: 100%;
+  min-height: 100vh; /* chiếm toàn màn hình (tùy nhu cầu) */
+}
+#cameraPreview {
+  width: 800px;
+  height: 600px;
+  border-radius: 20px;
+  border: 3px solid #1a73e8;
+  box-shadow: 0 0 25px rgba(26, 115, 232, 0.5);
+  object-fit: cover;
+}
+
+.face_scan {
+  width: 800px;
+  height: 800px;
+  border-radius: 15px;
+  display: block;
+  border: 1px solid #1a2be8;
+  box-shadow: 25px solid #e81a4a #d31ae8;
+}
+.more-info {
+  text-align: center;
+  margin-top: 20px;
+  font-size: 26px;
+  color: #ccc;
+  margin-bottom: 8px;
+}
