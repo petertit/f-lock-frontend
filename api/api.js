@@ -1,1 +1,1 @@
-export const API_BASE = "https://f-lock-backend.onrender.com"; // đổi đúng URL backend của bạn
+export const API_BASE = "https://f-locker-backend.onrender.com";
