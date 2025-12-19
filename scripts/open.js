@@ -1,120 +1,138 @@
 import { API_BASE } from "../api/api.js";
-const RENDER_BRIDGE = API_BASE;
+
+const RENDER_BRIDGE = (API_BASE || "").replace(/\/+$/, ""); // bỏ slash cuối
 
 const userRaw = sessionStorage.getItem("user");
 const currentUser = userRaw ? JSON.parse(userRaw) : null;
-
 const currentUserId = currentUser ? currentUser._id || currentUser.id : null;
 
 let lockerStates = {};
 
 const USER_UPDATE_ENDPOINTS = ["/auth/update", "/update", "/account/update"];
 
-// --- Helper Functions ---
+//Helpers: fetch + safe JSON
 
-/**
- * Updates a single field for the current user on the server.
- * @param {string} field - The field name (e.g., 'registeredLocker').
- * @param {string | null} value - The new value.
- * @returns {Promise<boolean>} - True if successful, false otherwise.
- */
+async function fetchJSON(url, options = {}) {
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {}),
+      },
+    });
+  } catch (err) {
+    throw new Error(
+      `Không gọi được API (Network/CORS). URL: ${url} | ${err.message}`
+    );
+  }
+
+  const text = await res.text();
+  let data = null;
+
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (_) {
+    throw new Error(
+      `API trả về không phải JSON (HTTP ${res.status}). Có thể backend đang lỗi/route sai.\n` +
+        `URL: ${url}\n` +
+        `Response đầu: ${text.slice(0, 120)}`
+    );
+  }
+
+  if (!res.ok) {
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+
+  return data;
+}
+
+//User update
+
 async function updateUserField(field, value) {
   if (!currentUserId) return false;
 
   for (const ep of USER_UPDATE_ENDPOINTS) {
+    const url = `${RENDER_BRIDGE}${ep}`;
     try {
-      const res = await fetch(`${RENDER_BRIDGE}${ep}`, {
+      const data = await fetchJSON(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: currentUserId,
-          [field]: value,
-        }),
+        body: JSON.stringify({ id: currentUserId, [field]: value }),
       });
 
-      if (res.status === 404) continue;
-
-      const data = await res.json().catch(() => ({}));
-
-      if (res.ok && data.user) {
+      if (data?.user) {
         sessionStorage.setItem("user", JSON.stringify(data.user));
         Object.assign(currentUser, data.user);
         console.log(`✅ Updated user field '${field}' to '${value}' via ${ep}`);
         return true;
       }
 
-      console.error(
-        `❌ Update user failed via ${ep}:`,
-        data?.error || res.status
-      );
+      console.error(`❌ Update user failed via ${ep}:`, data?.error || data);
       alert(
         `❌ Lỗi cập nhật người dùng: ${data?.error || "Không thể cập nhật"}`
       );
       return false;
     } catch (err) {
-      console.warn(`⚠️ Network error updating user via ${ep}:`, err);
+      // nếu endpoint này không tồn tại => thử endpoint tiếp theo
+      if (String(err.message).includes("HTTP 404")) continue;
+      console.warn(`⚠️ Error updating user via ${ep}:`, err.message);
     }
   }
 
   console.warn(
     "⚠️ No user-update endpoint worked. Falling back to session only."
   );
+
   try {
     const updated = { ...currentUser, [field]: value };
     sessionStorage.setItem("user", JSON.stringify(updated));
     Object.assign(currentUser, updated);
   } catch (_) {}
+
   return true;
 }
 
-/**
- * Sends a command to the Pi (via Bridge) to physically lock the locker.
- * @param {string} lockerId - The ID of the locker to lock (e.g., "01").
- * @returns {Promise<boolean>} - True if command was sent successfully, false otherwise.
- */
+//Raspi commands
+
 async function sendLockCommand(lockerId) {
   if (!currentUserId) return false;
+
+  const url = `${RENDER_BRIDGE}/raspi/lock`;
   try {
-    console.log(`Sending lock command for locker ${lockerId}`);
-    const res = await fetch(`${RENDER_BRIDGE}/raspi/lock`, {
+    const data = await fetchJSON(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ lockerId, user: currentUser?.email }),
     });
-    const data = await res.json();
-    if (res.ok && data.success) {
+
+    if (data.success) {
       console.log(`✅ Lock command acknowledged for ${lockerId}.`);
       return true;
     }
+
     console.error(
       `❌ Lock command failed for ${lockerId}:`,
-      data.error || "Unknown"
+      data.error || data
     );
     return false;
   } catch (err) {
     console.error(
-      `❌ Network error sending lock command for ${lockerId}:`,
-      err
+      `❌ Error sending lock command for ${lockerId}:`,
+      err.message
     );
     return false;
   }
 }
 
-// --- Locker State Management ---
+//Locker state
 
-/**
- * Fetches the current status of all lockers from the server.
- */
 async function fetchLockerStates() {
+  const url = `${RENDER_BRIDGE}/lockers/status`;
   try {
-    const res = await fetch(`${RENDER_BRIDGE}/lockers/status`);
-    if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
-    const data = await res.json();
+    const data = await fetchJSON(url);
 
     if (!data.success || !Array.isArray(data.lockers)) {
-      throw new Error(
-        data.error || "Invalid data structure received from server"
-      );
+      throw new Error(data.error || "Invalid data structure from server");
     }
 
     lockerStates = data.lockers.reduce((acc, locker) => {
@@ -127,25 +145,20 @@ async function fetchLockerStates() {
     updateGridUI();
     if (window.updateSliderUI) window.updateSliderUI(lockerStates);
   } catch (err) {
-    console.error("❌ Error loading locker states:", err);
+    console.error("❌ Error loading locker states:", err.message);
     alert("Không thể tải trạng thái tủ khóa: " + err.message);
   }
 }
 
-/**
- * Updates the status and owner of a specific locker on the server.
- * @param {string} lockerId
- * @param {'OPEN' | 'LOCKED' | 'EMPTY'} newStatus
- * @param {string | null} newOwnerId
- */
 async function updateLockerStatus(lockerId, newStatus, newOwnerId) {
+  const url = `${RENDER_BRIDGE}/lockers/update`;
   console.log(
     `Updating locker ${lockerId} => ${newStatus}, owner=${newOwnerId}`
   );
+
   try {
-    const res = await fetch(`${RENDER_BRIDGE}/lockers/update`, {
+    const data = await fetchJSON(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         lockerId,
         status: newStatus,
@@ -153,12 +166,10 @@ async function updateLockerStatus(lockerId, newStatus, newOwnerId) {
       }),
     });
 
-    const data = await res.json();
-
-    if (res.ok && data.success) {
+    if (data.success) {
       lockerStates[lockerId] = {
         status: newStatus,
-        userId: data.locker.ownerId,
+        userId: data?.locker?.ownerId || newOwnerId,
       };
 
       updateGridUI();
@@ -166,25 +177,20 @@ async function updateLockerStatus(lockerId, newStatus, newOwnerId) {
       return true;
     }
 
-    console.error(
-      `❌ Failed update locker ${lockerId}:`,
-      data.error || res.status
-    );
     alert(`❌ Lỗi: ${data.error || "Không thể cập nhật trạng thái tủ."}`);
     return false;
   } catch (err) {
-    console.error(`❌ Network error updating locker ${lockerId}:`, err);
-    alert(`❌ Lỗi kết nối khi cập nhật tủ ${lockerId}.`);
+    console.error(`❌ Error updating locker ${lockerId}:`, err.message);
+    alert(`❌ Lỗi khi cập nhật tủ ${lockerId}: ${err.message}`);
     return false;
   }
 }
 
-// --- UI Update Function ---
+//UI
 
 function updateGridUI() {
   const gridContainer = document.querySelector(".grid-container");
 
-  // ✅ FIX: deploy có thể không còn open.html trong pathname
   const path = window.location.pathname.toLowerCase();
   const isOpenPage = path.includes("open");
 
@@ -243,6 +249,7 @@ function addGridButton(gridItem, text, color, onClickHandler) {
   const button = document.createElement("button");
   button.textContent = text;
   button.className = text === "CLOSE" ? "close-btn" : "unregister-btn";
+
   button.style.position = "absolute";
   button.style.bottom = "10px";
   button.style.left = "50%";
@@ -276,7 +283,7 @@ function addGridButton(gridItem, text, color, onClickHandler) {
   };
 }
 
-// --- Event Handlers ---
+//Events
 
 function handleLockerClick(lockerId) {
   if (!currentUserId) {
@@ -362,27 +369,26 @@ window.openLockerSuccess = (lockerId) => {
   if (!lockerId) return alert("Lỗi: Không có ID tủ khóa để mở.");
   if (!currentUserId) return alert("Lỗi: Không tìm thấy thông tin người dùng.");
 
-  fetch(`${RENDER_BRIDGE}/raspi/unlock`, {
+  const url = `${RENDER_BRIDGE}/raspi/unlock`;
+
+  fetchJSON(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ lockerId, user: currentUser?.email }),
   })
-    .then((res) => res.json())
-    .then((unlockData) => {
-      if (!unlockData.success && unlockData.error) {
-        alert(
-          "⚠️ Lệnh mở khóa vật lý thất bại: " +
-            unlockData.error +
-            ". DB vẫn sẽ cập nhật."
-        );
-      }
-      return updateLockerStatus(lockerId, "OPEN", currentUserId);
+    .catch((unlockErr) => {
+      alert(
+        "⚠️ Lệnh mở khóa vật lý thất bại: " +
+          unlockErr.message +
+          ". DB vẫn sẽ cập nhật."
+      );
+      return { success: false };
     })
+    .then(() => updateLockerStatus(lockerId, "OPEN", currentUserId))
     .then(async (dbOk) => {
-      if (!dbOk) {
-        alert(`❌ Không thể cập nhật trạng thái tủ ${lockerId} trong DB.`);
-        return;
-      }
+      if (!dbOk)
+        return alert(
+          `❌ Không thể cập nhật trạng thái tủ ${lockerId} trong DB.`
+        );
 
       const userLocker = currentUser?.registeredLocker;
       const needsUserUpdate =
@@ -395,7 +401,7 @@ window.openLockerSuccess = (lockerId) => {
     .catch((err) => alert("❌ Lỗi mở khóa: " + err.message));
 };
 
-// --- Initialization ---
+//Init
 
 document.addEventListener("DOMContentLoaded", () => {
   const path = window.location.pathname.toLowerCase();
