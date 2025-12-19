@@ -1,12 +1,14 @@
 import { API_BASE } from "../api/api.js";
 const RENDER_BRIDGE = API_BASE;
-const LOCKER_COUNT = 9;
 
 const userRaw = sessionStorage.getItem("user");
 const currentUser = userRaw ? JSON.parse(userRaw) : null;
-const currentUserId = currentUser ? currentUser.id : null;
+
+const currentUserId = currentUser ? currentUser._id || currentUser.id : null;
 
 let lockerStates = {};
+
+const USER_UPDATE_ENDPOINTS = ["/auth/update", "/update", "/account/update"];
 
 // --- Helper Functions ---
 
@@ -18,38 +20,51 @@ let lockerStates = {};
  */
 async function updateUserField(field, value) {
   if (!currentUserId) return false;
-  try {
-    const res = await fetch(`${RENDER_BRIDGE}/update`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: currentUserId, // Send string ID
-        [field]: value,
-      }),
-    });
-    const data = await res.json();
-    if (res.ok && data.user) {
-      sessionStorage.setItem("user", JSON.stringify(data.user)); // Update session
-      Object.assign(currentUser, data.user); // Update global variable
-      console.log(`User field '${field}' updated to '${value}'`);
-      return true;
-    } else {
+
+  for (const ep of USER_UPDATE_ENDPOINTS) {
+    try {
+      const res = await fetch(`${RENDER_BRIDGE}${ep}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: currentUserId,
+          [field]: value,
+        }),
+      });
+
+      if (res.status === 404) continue;
+
+      const data = await res.json().catch(() => ({}));
+
+      if (res.ok && data.user) {
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        Object.assign(currentUser, data.user);
+        console.log(`✅ Updated user field '${field}' to '${value}' via ${ep}`);
+        return true;
+      }
+
       console.error(
-        `Error updating user field '${field}':`,
-        data.error || "Unknown server error"
+        `❌ Update user failed via ${ep}:`,
+        data?.error || res.status
       );
       alert(
-        `❌ Lỗi cập nhật thông tin người dùng: ${
-          data.error || "Lỗi không xác định"
-        }`
+        `❌ Lỗi cập nhật người dùng: ${data?.error || "Không thể cập nhật"}`
       );
       return false;
+    } catch (err) {
+      console.warn(`⚠️ Network error updating user via ${ep}:`, err);
     }
-  } catch (err) {
-    console.error(`Network error updating user field '${field}':`, err);
-    alert(`❌ Lỗi mạng khi cập nhật thông tin người dùng: ${err.message}`);
-    return false;
   }
+
+  console.warn(
+    "⚠️ No user-update endpoint worked. Falling back to session only."
+  );
+  try {
+    const updated = { ...currentUser, [field]: value };
+    sessionStorage.setItem("user", JSON.stringify(updated));
+    Object.assign(currentUser, updated);
+  } catch (_) {}
+  return true;
 }
 
 /**
@@ -64,24 +79,23 @@ async function sendLockCommand(lockerId) {
     const res = await fetch(`${RENDER_BRIDGE}/raspi/lock`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lockerId: lockerId, user: currentUser?.email }),
+      body: JSON.stringify({ lockerId, user: currentUser?.email }),
     });
     const data = await res.json();
     if (res.ok && data.success) {
-      console.log(`Lock command acknowledged for ${lockerId}.`);
+      console.log(`✅ Lock command acknowledged for ${lockerId}.`);
       return true;
-    } else {
-      console.error(
-        `Lock command failed for ${lockerId}:`,
-        data.error || "Unknown Pi error"
-      );
-      // Avoid alerting multiple times during logout
-      // alert(`⚠️ Không thể gửi lệnh khóa đến tủ ${lockerId}: ${data.error || 'Lỗi không xác định'}`);
-      return false;
     }
+    console.error(
+      `❌ Lock command failed for ${lockerId}:`,
+      data.error || "Unknown"
+    );
+    return false;
   } catch (err) {
-    console.error(`Network error sending lock command for ${lockerId}:`, err);
-    // alert(`❌ Lỗi mạng khi gửi lệnh khóa cho tủ ${lockerId}.`);
+    console.error(
+      `❌ Network error sending lock command for ${lockerId}:`,
+      err
+    );
     return false;
   }
 }
@@ -96,6 +110,7 @@ async function fetchLockerStates() {
     const res = await fetch(`${RENDER_BRIDGE}/lockers/status`);
     if (!res.ok) throw new Error(`Server responded with status ${res.status}`);
     const data = await res.json();
+
     if (!data.success || !Array.isArray(data.lockers)) {
       throw new Error(
         data.error || "Invalid data structure received from server"
@@ -106,59 +121,59 @@ async function fetchLockerStates() {
       acc[locker.lockerId] = { status: locker.status, userId: locker.ownerId };
       return acc;
     }, {});
-    console.log("Fetched locker states:", lockerStates);
+
+    console.log("✅ Fetched locker states:", lockerStates);
 
     updateGridUI();
-    if (window.updateSliderUI) {
-      window.updateSliderUI(lockerStates);
-    }
+    if (window.updateSliderUI) window.updateSliderUI(lockerStates);
   } catch (err) {
-    console.error("Error loading locker states:", err);
+    console.error("❌ Error loading locker states:", err);
     alert("Không thể tải trạng thái tủ khóa: " + err.message);
   }
 }
 
 /**
  * Updates the status and owner of a specific locker on the server.
- * @param {string} lockerId - The ID of the locker.
- * @param {'OPEN' | 'LOCKED' | 'EMPTY'} newStatus - The new status.
- * @param {string | null} newOwnerId - The string ID of the new owner, or null.
- * @returns {Promise<boolean>} - True if successful, false otherwise.
+ * @param {string} lockerId
+ * @param {'OPEN' | 'LOCKED' | 'EMPTY'} newStatus
+ * @param {string | null} newOwnerId
  */
 async function updateLockerStatus(lockerId, newStatus, newOwnerId) {
   console.log(
-    `Updating locker ${lockerId} to status: ${newStatus}, owner: ${newOwnerId}`
+    `Updating locker ${lockerId} => ${newStatus}, owner=${newOwnerId}`
   );
-  const payload = { lockerId, status: newStatus, ownerId: newOwnerId };
   try {
     const res = await fetch(`${RENDER_BRIDGE}/lockers/update`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        lockerId,
+        status: newStatus,
+        ownerId: newOwnerId,
+      }),
     });
-    const data = await res.json();
-    if (res.ok && data.success) {
-      console.log(`Locker ${lockerId} updated successfully on server.`);
 
+    const data = await res.json();
+
+    if (res.ok && data.success) {
       lockerStates[lockerId] = {
         status: newStatus,
         userId: data.locker.ownerId,
       };
+
       updateGridUI();
-      if (window.updateSliderUI) {
-        window.updateSliderUI(lockerStates);
-      }
+      if (window.updateSliderUI) window.updateSliderUI(lockerStates);
       return true;
-    } else {
-      console.error(
-        `Failed to update locker ${lockerId} status:`,
-        data.error || `Server status ${res.status}`
-      );
-      alert(`❌ Lỗi: ${data.error || "Không thể cập nhật trạng thái tủ."}`);
-      return false;
     }
+
+    console.error(
+      `❌ Failed update locker ${lockerId}:`,
+      data.error || res.status
+    );
+    alert(`❌ Lỗi: ${data.error || "Không thể cập nhật trạng thái tủ."}`);
+    return false;
   } catch (err) {
-    console.error(`Network error updating locker ${lockerId} status:`, err);
+    console.error(`❌ Network error updating locker ${lockerId}:`, err);
     alert(`❌ Lỗi kết nối khi cập nhật tủ ${lockerId}.`);
     return false;
   }
@@ -168,14 +183,15 @@ async function updateLockerStatus(lockerId, newStatus, newOwnerId) {
 
 function updateGridUI() {
   const gridContainer = document.querySelector(".grid-container");
-  if (!window.location.pathname.endsWith("open.html") || !gridContainer) {
-    return;
-  }
+
+  // ✅ FIX: deploy có thể không còn open.html trong pathname
+  const path = window.location.pathname.toLowerCase();
+  const isOpenPage = path.includes("open");
+
+  if (!isOpenPage || !gridContainer) return;
 
   const gridItems = gridContainer.querySelectorAll(".grid-item");
   if (!gridItems.length) return;
-
-  console.log("Updating grid UI on open.html...");
 
   gridItems.forEach((item) => {
     const lockerId = item.dataset.lockerId;
@@ -197,6 +213,7 @@ function updateGridUI() {
       item.classList.add("status-locked");
       item.style.border = "2px solid red";
       item.style.backgroundColor = "rgba(255, 0, 0, 0.3)";
+
       if (state.userId === currentUserId) {
         addGridButton(item, "HỦY ĐĂNG KÝ", "#ff6600", () =>
           handleUnregister(lockerId)
@@ -209,7 +226,6 @@ function updateGridUI() {
         item.classList.add("status-open");
         item.style.border = "2px solid lime";
         item.style.backgroundColor = "rgba(0, 255, 0, 0.2)";
-
         addGridButton(item, "CLOSE", "yellow", () =>
           handleCloseLocker(lockerId)
         );
@@ -247,6 +263,7 @@ function addGridButton(gridItem, text, color, onClickHandler) {
     e.stopPropagation();
     onClickHandler();
   };
+
   gridItem.appendChild(button);
 
   gridItem.onmouseenter = () => {
@@ -262,7 +279,6 @@ function addGridButton(gridItem, text, color, onClickHandler) {
 // --- Event Handlers ---
 
 function handleLockerClick(lockerId) {
-  console.log(`Handling click for locker ${lockerId}`);
   if (!currentUserId) {
     alert("Bạn cần đăng nhập để tương tác với tủ khóa.");
     window.location.href = "./logon.html";
@@ -272,13 +288,9 @@ function handleLockerClick(lockerId) {
   const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
 
   if (state.status === "EMPTY") {
-    console.log(`Locker ${lockerId} is EMPTY.`);
-
-    const userLocker = currentUser.registeredLocker;
-    let hasRegisteredLocker = false;
-    if (typeof userLocker === "string" && /^\d{2}$/.test(userLocker)) {
-      hasRegisteredLocker = true;
-    }
+    const userLocker = currentUser?.registeredLocker;
+    const hasRegisteredLocker =
+      typeof userLocker === "string" && /^\d{2}$/.test(userLocker);
 
     if (hasRegisteredLocker) {
       alert(
@@ -288,55 +300,46 @@ function handleLockerClick(lockerId) {
     }
 
     if (confirm(`Tủ ${lockerId} đang trống. Bạn muốn đăng ký và mở tủ này?`)) {
-      console.log(
-        `User confirmed registration for ${lockerId}. Redirecting to auth method selection...`
-      );
       sessionStorage.setItem("locker_to_open", lockerId);
       window.location.href = "./face_log.html";
     }
-  } else if (state.userId === currentUserId) {
-    console.log(
-      `Locker ${lockerId} belongs to current user. Status: ${state.status}`
-    );
+    return;
+  }
+
+  if (state.userId === currentUserId) {
     if (state.status === "LOCKED") {
       if (confirm(`Đây là tủ của bạn (Tủ ${lockerId}). Bạn muốn mở khóa?`)) {
-        console.log(
-          `User confirmed unlock for ${lockerId}. Redirecting to auth method selection...`
-        );
         sessionStorage.setItem("locker_to_open", lockerId);
         window.location.href = "./face_log.html";
       }
     } else {
       alert(`Tủ ${lockerId} của bạn hiện đang mở.`);
     }
-  } else {
-    console.log(`Locker ${lockerId} is occupied by another user.`);
-    alert(
-      `Tủ ${lockerId} đang ${
-        state.status === "OPEN" ? "được sử dụng" : "đã được đăng ký"
-      } bởi người khác.`
-    );
+    return;
   }
+
+  alert(
+    `Tủ ${lockerId} đang ${
+      state.status === "OPEN" ? "được sử dụng" : "đã được đăng ký"
+    } bởi người khác.`
+  );
 }
 window.handleLockerClick = handleLockerClick;
+
 async function handleCloseLocker(lockerId) {
-  console.log(`Handling CLOSE button for locker ${lockerId}`);
   if (confirm(`Bạn có chắc muốn đóng và khóa tủ ${lockerId}?`)) {
     const lockSent = await sendLockCommand(lockerId);
     await updateLockerStatus(lockerId, "LOCKED", currentUserId);
-    if (lockSent) {
-      alert(`Đã gửi lệnh khóa tủ ${lockerId}.`);
-    } else {
-      alert(
-        `Đã cập nhật trạng thái tủ ${lockerId} thành ĐÃ KHÓA, nhưng có lỗi khi gửi lệnh khóa vật lý.`
-      );
-    }
+    alert(
+      lockSent
+        ? `Đã gửi lệnh khóa tủ ${lockerId}.`
+        : `Đã cập nhật DB LOCKED nhưng lỗi gửi lệnh khóa vật lý.`
+    );
   }
 }
 window.handleCloseLocker = handleCloseLocker;
 
 async function handleUnregister(lockerId) {
-  console.log(`Handling UNREGISTER button for locker ${lockerId}`);
   if (
     confirm(
       `Bạn có chắc muốn hủy đăng ký tủ ${lockerId}? Tủ sẽ được khóa lại và trở thành trống.`
@@ -344,180 +347,75 @@ async function handleUnregister(lockerId) {
   ) {
     await sendLockCommand(lockerId);
 
-    const lockerUpdated = await updateLockerStatus(lockerId, "EMPTY", null);
-
-    if (lockerUpdated) {
+    const ok = await updateLockerStatus(lockerId, "EMPTY", null);
+    if (ok) {
       await updateUserField("registeredLocker", null);
       alert(`Đã hủy đăng ký tủ ${lockerId}.`);
     } else {
-      alert(
-        `Có lỗi xảy ra khi cập nhật trạng thái tủ ${lockerId} thành trống.`
-      );
+      alert(`Có lỗi khi cập nhật trạng thái tủ ${lockerId} thành trống.`);
     }
   }
 }
 window.handleUnregister = handleUnregister;
 
-window.handleLogoutAndLock = function () {
-  console.log("Handling logout and lock...");
-  if (!currentUserId) {
-    sessionStorage.removeItem("user");
-    window.location.href = "logon.html";
-    return;
-  }
-
-  const lockPromises = [];
-  const updateDbPromises = [];
-
-  Object.keys(lockerStates).forEach((lockerId) => {
-    const state = lockerStates[lockerId];
-
-    if (state.status === "OPEN" && state.userId === currentUserId) {
-      console.log(
-        `Queueing lock command and DB update for open locker ${lockerId} on logout.`
-      );
-      lockPromises.push(sendLockCommand(lockerId));
-
-      updateDbPromises.push(
-        updateLockerStatus(lockerId, "LOCKED", currentUserId)
-      );
-    }
-  });
-
-  if (lockPromises.length > 0 || updateDbPromises.length > 0) {
-    console.log(
-      `Attempting to lock ${lockPromises.length} open locker(s) and update DB...`
-    );
-
-    Promise.allSettled([...lockPromises, ...updateDbPromises]).then(
-      (results) => {
-        const failedLocks =
-          lockPromises.length > 0
-            ? results
-                .slice(0, lockPromises.length)
-                .filter(
-                  (r) =>
-                    r.status === "rejected" ||
-                    (r.status === "fulfilled" && !r.value)
-                )
-            : [];
-        if (failedLocks.length > 0) {
-          alert(
-            `⚠️ Có lỗi khi gửi lệnh khóa ${failedLocks.length} tủ. Trạng thái DB có thể đã được cập nhật.`
-          );
-        } else if (lockPromises.length > 0) {
-          alert("Đã gửi lệnh khóa cho các tủ đang mở.");
-        }
-
-        sessionStorage.removeItem("user");
-        alert("Đăng xuất thành công.");
-        window.location.href = "logon.html";
-      }
-    );
-  } else {
-    console.log("No open lockers found for user. Logging out directly.");
-    sessionStorage.removeItem("user");
-    alert("Đăng xuất thành công.");
-    window.location.href = "logon.html";
-  }
-};
-
 window.openLockerSuccess = (lockerId) => {
-  console.log(
-    `Authentication successful for locker ${lockerId}. Proceeding to open...`
-  );
-  if (!lockerId) {
-    alert("Lỗi: Không có ID tủ khóa để mở.");
-    return;
-  }
-  if (!currentUserId) {
-    alert("Lỗi: Không tìm thấy thông tin người dùng.");
-    return;
-  }
+  if (!lockerId) return alert("Lỗi: Không có ID tủ khóa để mở.");
+  if (!currentUserId) return alert("Lỗi: Không tìm thấy thông tin người dùng.");
 
   fetch(`${RENDER_BRIDGE}/raspi/unlock`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ lockerId: lockerId, user: currentUser?.email }),
+    body: JSON.stringify({ lockerId, user: currentUser?.email }),
   })
     .then((res) => res.json())
     .then((unlockData) => {
       if (!unlockData.success && unlockData.error) {
-        console.error("Physical unlock command failed:", unlockData.error);
         alert(
           "⚠️ Lệnh mở khóa vật lý thất bại: " +
             unlockData.error +
-            ". Trạng thái DB sẽ vẫn được cập nhật."
+            ". DB vẫn sẽ cập nhật."
         );
-      } else {
-        console.log("Physical unlock command acknowledged.");
       }
-
       return updateLockerStatus(lockerId, "OPEN", currentUserId);
     })
-    .then(async (lockerDbUpdated) => {
-      if (lockerDbUpdated) {
-        console.log(`Locker ${lockerId} status updated to OPEN in DB.`);
-
-        const userLocker = currentUser.registeredLocker;
-        let needsUserUpdate = false;
-        if (typeof userLocker !== "string" || !/^\d{2}$/.test(userLocker)) {
-          console.log(
-            `User does not have a valid registered locker. Setting registeredLocker to ${lockerId}.`
-          );
-          needsUserUpdate = true;
-        }
-
-        if (needsUserUpdate) {
-          await updateUserField("registeredLocker", lockerId);
-        }
-
-        alert(`🔓 Tủ ${lockerId} đã mở thành công! (Relay đang BẬT)`);
-
-        window.location.href = "./index.html";
-      } else {
-        alert(
-          `❌ Lỗi nghiêm trọng: Không thể cập nhật trạng thái tủ ${lockerId} trong cơ sở dữ liệu.`
-        );
+    .then(async (dbOk) => {
+      if (!dbOk) {
+        alert(`❌ Không thể cập nhật trạng thái tủ ${lockerId} trong DB.`);
+        return;
       }
+
+      const userLocker = currentUser?.registeredLocker;
+      const needsUserUpdate =
+        typeof userLocker !== "string" || !/^\d{2}$/.test(userLocker);
+      if (needsUserUpdate) await updateUserField("registeredLocker", lockerId);
+
+      alert(`🔓 Tủ ${lockerId} đã mở thành công! (Relay đang BẬT)`);
+      window.location.href = "./index.html";
     })
-    .catch((err) => {
-      console.error("Error during openLockerSuccess:", err);
-      alert(
-        "❌ Lỗi không mong muốn xảy ra trong quá trình mở khóa: " + err.message
-      );
-    });
+    .catch((err) => alert("❌ Lỗi mở khóa: " + err.message));
 };
 
 // --- Initialization ---
 
 document.addEventListener("DOMContentLoaded", () => {
-  const path = window.location.pathname;
-  const isIndex = path.endsWith("index.html") || path === "/";
-  const isOpenPage = path.endsWith("open.html");
+  const path = window.location.pathname.toLowerCase();
+  const isIndex =
+    path.endsWith("index.html") || path === "/" || path.endsWith("/");
+  const isOpenPage = path.includes("open");
 
   if (isIndex || isOpenPage) {
-    console.log("Initializing locker logic on page:", path);
-
     if (isOpenPage) {
       const gridContainer = document.querySelector(".grid-container");
       if (gridContainer) {
-        console.log("Setting up grid listeners on open.html");
         gridContainer.addEventListener("click", (e) => {
           const item = e.target.closest(".grid-item");
-
           if (item && !e.target.closest("button")) {
             e.preventDefault();
             handleLockerClick(item.dataset.lockerId);
           }
         });
-      } else {
-        console.warn("Grid container not found on open.html");
       }
     }
-
     fetchLockerStates();
-  } else {
-    console.log("Skipping locker logic initialization on page:", path);
   }
 });
