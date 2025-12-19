@@ -1,3 +1,4 @@
+import { API_BASE } from "../api/api.js";
 document.addEventListener("DOMContentLoaded", () => {
   const historyList = document.getElementById("historyList");
   const historyLockerName = document.getElementById("historyLockerName");
@@ -5,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (!historyList) return;
 
-  const BASE_URL = "https://f-locker-backend.onrender.com";
+  const BASE_URL = API_BASE;
 
   const userRaw = sessionStorage.getItem("user");
   const user = userRaw ? JSON.parse(userRaw) : null;

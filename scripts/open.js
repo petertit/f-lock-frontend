@@ -1,4 +1,5 @@
-const RENDER_BRIDGE = "https://f-locker-backend.onrender.com";
+import { API_BASE } from "../api/api.js";
+const RENDER_BRIDGE = API_BASE;
 const LOCKER_COUNT = 9;
 
 const userRaw = sessionStorage.getItem("user");

@@ -1,5 +1,7 @@
+import { API_BASE } from "../api/api.js";
+
 document.addEventListener("DOMContentLoaded", () => {
-  const RENDER_BRIDGE = "https://f-locker-backend.onrender.com";
+  const RENDER_BRIDGE = API_BASE;
   const userRaw = sessionStorage.getItem("user");
   const user = userRaw ? JSON.parse(userRaw) : null;
   if (!user || (!user.id && !user._id)) {

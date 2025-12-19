@@ -1,8 +1,9 @@
+import { API_BASE } from "../api/api.js";
 document.addEventListener("DOMContentLoaded", () => {
   const takeBtn = document.querySelector(".take-btn");
   const cameraWrapper = document.querySelector(".face-scan-wrapper");
   const statusEl = document.querySelector("#status");
-  const BRIDGE_SERVER = "https://f-locker-backend.onrender.com/raspi";
+  const BRIDGE_SERVER = `${API_BASE}/raspi`;
   const RASPI_NGROK = "https://adelaida-gymnogynous-gnostically.ngrok-free.dev";
   const LOCAL_IP_CHECK = ["localhost", "127.0.0.1", "192.168."];
   const MAX_SUCCESS_CAPTURES = 5;
