@@ -2,209 +2,376 @@ import { API_BASE } from "../api/api.js";
 
 const API = API_BASE;
 
-//Session User
-let currentUser = null;
-let currentUserId = null;
+// ====== USER (đúng & an toàn) ======
+const userRaw = sessionStorage.getItem("user");
+const currentUser = userRaw ? JSON.parse(userRaw) : null;
+const currentUserId = currentUser ? (currentUser._id || currentUser.id) : null;
 
-function loadUserFromSession() {
-  const raw = sessionStorage.getItem("user");
-  currentUser = raw ? JSON.parse(raw) : null;
-  currentUserId = currentUser ? currentUser._id || currentUser.id : null;
-}
-
-loadUserFromSession();
-
-//Locker States
+// Locker states cache: { "01": {status:"EMPTY|LOCKED|OPEN", userId:"..."} }
 let lockerStates = {};
 
+// endpoint update user (tùy backend của bạn đang mount kiểu nào)
+const USER_UPDATE_ENDPOINTS = ["/auth/update", "/update", "/account/update"];
+
+// ====== Helpers ======
 function isOpenPage() {
-  return window.location.pathname.toLowerCase().includes("open");
+  // Cloudflare Pages có thể là /open hoặc /open.html
+  const p = window.location.pathname.toLowerCase();
+  return p.includes("open");
 }
 
-function parseFetchError(err, url) {
-  return `Không gọi được API (Network/CORS). URL: ${url} | ${err.message}`;
+function normalizeId(id) {
+  if (id == null) return null;
+  return String(id);
 }
 
-//Refresh user from server
-async function refreshUserFromServer() {
+function getMyLockerFromDB() {
   if (!currentUserId) return null;
+  const uid = normalizeId(currentUserId);
+  for (const [lockerId, st] of Object.entries(lockerStates)) {
+    if (normalizeId(st.userId) === uid) return lockerId;
+  }
+  return null;
+}
 
-  const url = `${API}/user/${currentUserId}`;
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
+function getMyLockerFromUser() {
+  const v = currentUser?.registeredLocker;
+  if (typeof v === "string" && /^\d{2}$/.test(v)) return v;
+  return null;
+}
 
-    const data = await res.json().catch(() => ({}));
+async function updateUserField(field, value) {
+  if (!currentUserId) return false;
 
-    if (!res.ok || !data.user) {
-      console.warn(
-        "⚠️ refreshUserFromServer failed:",
-        data?.error || res.status
-      );
-      return null;
+  for (const ep of USER_UPDATE_ENDPOINTS) {
+    try {
+      const res = await fetch(`${API}${ep}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: currentUserId, [field]: value }),
+      });
+
+      if (res.status === 404) continue;
+
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.user) {
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+        // update in-memory object
+        Object.assign(currentUser, data.user);
+        return true;
+      }
+
+      // endpoint có tồn tại nhưng error
+      console.warn("updateUserField failed:", ep, data?.error || res.status);
+      return false;
+    } catch (e) {
+      // thử endpoint khác
+      console.warn("updateUserField network error:", ep, e.message);
     }
+  }
 
-    sessionStorage.setItem("user", JSON.stringify(data.user));
-    loadUserFromSession();
-    console.log("✅ Refreshed user:", currentUser);
-    return currentUser;
-  } catch (err) {
-    console.warn("⚠️ refreshUserFromServer network error:", err);
-    return null;
+  // fallback: nếu không update server được thì vẫn update session để UI chạy
+  const updated = { ...(currentUser || {}), [field]: value };
+  sessionStorage.setItem("user", JSON.stringify(updated));
+  if (currentUser) Object.assign(currentUser, updated);
+  return true;
+}
+
+function applyStateClass(item, state, isMine) {
+  item.classList.remove("status-empty", "status-locked", "status-open", "status-other");
+  item.style.outline = "";
+  item.style.border = "";
+  item.style.backgroundColor = "";
+
+  // default class theo status
+  if (state.status === "EMPTY") item.classList.add("status-empty");
+
+  // Màu theo yêu cầu:
+  // - tủ người khác: đỏ
+  // - tủ mình: vàng nếu LOCKED, xanh nếu OPEN
+  if (state.status !== "EMPTY") {
+    if (isMine) {
+      if (state.status === "LOCKED") {
+        item.classList.add("status-locked");
+        item.style.border = "2px solid #ffd000"; // vàng
+        item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
+      } else if (state.status === "OPEN") {
+        item.classList.add("status-open");
+        item.style.border = "2px solid #00ff66"; // xanh lá
+        item.style.backgroundColor = "rgba(0, 255, 102, 0.14)";
+      }
+    } else {
+      // người khác
+      item.classList.add("status-other");
+      item.style.border = "2px solid #ff2a2a"; // đỏ
+      item.style.backgroundColor = "rgba(255, 42, 42, 0.16)";
+      item.style.opacity = "0.85";
+    }
   }
 }
 
-//Fetch locker status
+function addUnregisterButton(item, lockerId) {
+  // xóa button cũ nếu có
+  item.querySelectorAll(".unregister-btn").forEach((b) => b.remove());
+
+  const btn = document.createElement("button");
+  btn.className = "unregister-btn";
+  btn.textContent = "HỦY ĐĂNG KÝ";
+  btn.type = "button";
+
+  // style inline để chắc chắn chạy (không phụ thuộc CSS)
+  btn.style.position = "absolute";
+  btn.style.left = "50%";
+  btn.style.bottom = "10px";
+  btn.style.transform = "translateX(-50%)";
+  btn.style.zIndex = "10";
+  btn.style.padding = "6px 10px";
+  btn.style.borderRadius = "8px";
+  btn.style.border = "0";
+  btn.style.cursor = "pointer";
+  btn.style.background = "#ff8800";
+  btn.style.color = "#fff";
+
+  btn.style.opacity = "0";
+  btn.style.visibility = "hidden";
+  btn.style.transition = "opacity 0.2s ease";
+
+  btn.addEventListener("click", async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    await handleUnregister(lockerId);
+  });
+
+  item.appendChild(btn);
+
+  item.addEventListener("mouseenter", () => {
+    btn.style.visibility = "visible";
+    btn.style.opacity = "1";
+  });
+
+  item.addEventListener("mouseleave", () => {
+    btn.style.visibility = "hidden";
+    btn.style.opacity = "0";
+  });
+}
+
+// ====== API calls ======
 async function fetchLockerStates() {
   const url = `${API}/lockers/status`;
+  const res = await fetch(url, { method: "GET" });
+
+  // nếu backend trả HTML (error page) => res.json sẽ vỡ
+  const text = await res.text();
+  let data;
   try {
-    const res = await fetch(url);
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(`HTTP ${res.status} - ${text || "Not OK"}`);
-    }
-
-    const data = await res.json();
-    if (!data.success || !Array.isArray(data.lockers)) {
-      throw new Error(data.error || "Invalid JSON structure");
-    }
-
-    lockerStates = Object.fromEntries(
-      data.lockers.map((l) => [
-        l.lockerId,
-        { status: l.status, userId: l.ownerId || null },
-      ])
-    );
-
-    const reg = currentUser?.registeredLocker;
-    if (typeof reg === "string" && /^\d{2}$/.test(reg)) {
-      if (!lockerStates[reg]) {
-        lockerStates[reg] = { status: "LOCKED", userId: currentUserId };
-      } else if (!lockerStates[reg].userId) {
-        lockerStates[reg].userId = currentUserId;
-        if (lockerStates[reg].status === "EMPTY")
-          lockerStates[reg].status = "LOCKED";
-      }
-    }
-
-    updateGridUI();
-  } catch (err) {
-    console.error("❌ Error loading locker states:", err);
-    alert("Không thể tải trạng thái tủ khóa: " + parseFetchError(err, url));
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`API không trả JSON. Status=${res.status}. Body bắt đầu: ${text.slice(0, 60)}...`);
   }
+
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  if (!data.success || !Array.isArray(data.lockers)) throw new Error(data?.error || "Sai cấu trúc lockers");
+
+  lockerStates = Object.fromEntries(
+    data.lockers.map((l) => [
+      String(l.lockerId),
+      { status: String(l.status), userId: l.ownerId ? String(l.ownerId) : null },
+    ])
+  );
+
+  return lockerStates;
 }
 
-//Update locker status
 async function updateLockerStatus(lockerId, status, ownerId) {
   const url = `${API}/lockers/update`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lockerId, status, ownerId }),
+  });
+
+  const text = await res.text();
+  let data;
   try {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lockerId, status, ownerId }),
-    });
+    data = JSON.parse(text);
+  } catch {
+    throw new Error(`Update API không trả JSON. Status=${res.status}. Body: ${text.slice(0, 80)}...`);
+  }
 
-    const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) throw new Error(data?.error || `HTTP ${res.status}`);
 
-    if (!res.ok || !data.success) {
-      throw new Error(data.error || `HTTP ${res.status}`);
-    }
+  lockerStates[lockerId] = {
+    status: data.locker.status,
+    userId: data.locker.ownerId || null,
+  };
 
-    lockerStates[lockerId] = {
-      status: data.locker.status,
-      userId: data.locker.ownerId,
-    };
+  return true;
+}
 
-    updateGridUI();
-    return true;
-  } catch (err) {
-    console.error("❌ updateLockerStatus error:", err);
-    alert(`❌ Lỗi cập nhật tủ ${lockerId}: ${err.message}`);
-    return false;
+// ====== Sync logic (tự đồng bộ) ======
+async function autoSyncUserLocker() {
+  if (!currentUserId) return;
+
+  const myLockerDB = getMyLockerFromDB();     // theo DB
+  const myLockerUser = getMyLockerFromUser(); // theo user session
+
+  // Case A: DB nói bạn đang sở hữu 1 tủ nhưng user.registeredLocker lại rỗng/sai -> update user
+  if (myLockerDB && myLockerUser !== myLockerDB) {
+    await updateUserField("registeredLocker", myLockerDB);
+    return;
+  }
+
+  // Case B: user nói bạn có tủ nhưng DB không thấy ownerId của bạn ở đâu -> clear user
+  // (vì DB là “nguồn sự thật” để tránh bug đăng ký 2 tủ)
+  if (!myLockerDB && myLockerUser) {
+    await updateUserField("registeredLocker", null);
   }
 }
 
-//UI
+// ====== UI ======
 function updateGridUI() {
   if (!isOpenPage()) return;
 
   const grid = document.querySelector(".grid-container");
   if (!grid) return;
 
+  const uid = normalizeId(currentUserId);
+  const myLockerDB = getMyLockerFromDB();
+  const myLockerUser = getMyLockerFromUser();
+  const myLocker = myLockerDB || myLockerUser; // ưu tiên DB
+
   grid.querySelectorAll(".grid-item").forEach((item) => {
-    const id = item.dataset.lockerId;
-    const state = lockerStates[id] || { status: "EMPTY", userId: null };
+    const lockerId = item.dataset.lockerId;
+    const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
 
-    item.classList.remove("status-empty", "status-locked", "status-open");
-    item.style.opacity = "1";
-    item.style.border = "";
-    item.style.backgroundColor = "";
+    // set relative để button absolute hoạt động
+    item.style.position = "relative";
 
-    if (state.status === "EMPTY") item.classList.add("status-empty");
-    if (state.status === "LOCKED") item.classList.add("status-locked");
-    if (state.status === "OPEN") item.classList.add("status-open");
+    const isMine = uid && normalizeId(state.userId) === uid;
 
-    if (state.userId && currentUserId && state.userId === currentUserId) {
-      item.style.border = "2px solid lime";
-      item.style.backgroundColor = "rgba(0,255,0,0.12)";
-    } else if (state.status !== "EMPTY") {
-      item.style.opacity = "0.7";
+    // áp màu đúng theo yêu cầu
+    applyStateClass(item, state, isMine);
+
+    // hover nút hủy đăng ký nếu là tủ của mình (LOCKED/OPEN đều cho hủy)
+    item.querySelectorAll(".unregister-btn").forEach((b) => b.remove());
+    if (isMine && state.status !== "EMPTY") {
+      addUnregisterButton(item, lockerId);
+    }
+
+    // optional: nếu bạn muốn “highlight” tủ của mình cho rõ
+    if (myLocker && lockerId === myLocker) {
+      item.style.outline = "2px solid rgba(255,255,255,0.25)";
+      item.style.outlineOffset = "4px";
     }
   });
 }
 
-//Click handler
+function requireLogin() {
+  alert("Bạn cần đăng nhập để sử dụng chức năng này.");
+  window.location.href = "./logon.html";
+}
+
+// ====== Actions ======
 function handleLockerClick(lockerId) {
-  if (!currentUserId) {
-    alert("Bạn cần đăng nhập.");
-    window.location.href = "./logon.html";
-    return;
-  }
+  if (!currentUserId) return requireLogin();
 
   const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
 
+  const myLockerDB = getMyLockerFromDB();
+  const myLockerUser = getMyLockerFromUser();
+  const myLocker = myLockerDB || myLockerUser;
+
+  // Nếu click tủ trống:
   if (state.status === "EMPTY") {
+    // Nhưng user đã có tủ khác -> chặn đăng ký tủ mới
+    if (myLocker && myLocker !== lockerId) {
+      alert(`Bạn đã đăng ký tủ ${myLocker}. Hãy hủy đăng ký trước khi chọn tủ khác.`);
+      return;
+    }
+
+    // cho phép đi qua face_log để xác thực mở + đăng ký
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
     return;
   }
 
-  if (state.userId === currentUserId) {
+  // Nếu tủ là của mình -> cho mở (đi face_log)
+  if (normalizeId(state.userId) === normalizeId(currentUserId)) {
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
     return;
   }
 
+  // tủ người khác
   alert(`Tủ ${lockerId} đang được người khác sử dụng.`);
 }
 
-//INIT
-document.addEventListener("DOMContentLoaded", async () => {
-  if (!isOpenPage()) return;
+async function handleUnregister(lockerId) {
+  if (!currentUserId) return requireLogin();
 
-  await refreshUserFromServer();
+  if (!confirm(`Bạn có chắc muốn hủy đăng ký tủ ${lockerId}? Tủ sẽ trở về TRỐNG.`)) return;
 
-  const grid = document.querySelector(".grid-container");
-  if (grid) {
-    grid.addEventListener("click", (e) => {
-      const item = e.target.closest(".grid-item");
-      if (!item) return;
-      handleLockerClick(item.dataset.lockerId);
-    });
+  try {
+    // cập nhật DB: EMPTY + ownerId null
+    await updateLockerStatus(lockerId, "EMPTY", null);
+
+    // cập nhật user
+    await updateUserField("registeredLocker", null);
+
+    // refresh UI
+    await fetchLockerStates();
+    await autoSyncUserLocker();
+    updateGridUI();
+
+    alert(`✅ Đã hủy đăng ký tủ ${lockerId}.`);
+  } catch (e) {
+    console.error(e);
+    alert(`❌ Hủy đăng ký thất bại: ${e.message}`);
   }
+}
 
-  await fetchLockerStates();
-});
-
+// callback từ face_log.html gọi qua window.opener hoặc cùng window
 window.openLockerSuccess = async (lockerId) => {
-  loadUserFromSession();
   if (!lockerId || !currentUserId) return;
 
-  const ok = await updateLockerStatus(lockerId, "OPEN", currentUserId);
-  if (ok) {
+  try {
+  
+    await updateLockerStatus(lockerId, "OPEN", currentUserId);
+
+  
+    await updateUserField("registeredLocker", lockerId);
+
     alert(`🔓 Tủ ${lockerId} đã mở!`);
     window.location.href = "./index.html";
+  } catch (e) {
+    alert(`❌ Mở tủ thất bại: ${e.message}`);
   }
 };
+
+// ====== Init ======
+document.addEventListener("DOMContentLoaded", async () => {
+  if (isOpenPage()) {
+    const grid = document.querySelector(".grid-container");
+    if (grid) {
+      grid.addEventListener("click", (e) => {
+        const item = e.target.closest(".grid-item");
+        if (!item) return;
+
+    
+        if (e.target.closest("button")) return;
+
+        e.preventDefault();
+        handleLockerClick(item.dataset.lockerId);
+      });
+    }
+  }
+
+  try {
+    await fetchLockerStates();
+    await autoSyncUserLocker();  
+    updateGridUI();
+  } catch (e) {
+    console.error(e);
+    alert("Lỗi tải chức năng tương tác tủ khóa. " + e.message);
+  }
+});
