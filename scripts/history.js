@@ -34,11 +34,36 @@ async function loadHistory() {
 
     historyList.innerHTML = "";
 
-    if (data.history.length === 0) {
-      historyList.innerHTML =
-        "<li style='text-align:center;color:#aaa'>Chưa có lịch sử</li>";
-      return;
-    }
+    data.history.forEach((h) => {
+      const li = document.createElement("li");
+      li.className = "history-item";
+
+      const action = h.action.toUpperCase();
+
+      let color = "#aaa";
+      let label = action;
+
+      if (action.includes("OPEN")) {
+        color = "#22c55e";
+        label = "OPEN";
+      } else if (action.includes("LOCK") || action.includes("CLOSE")) {
+        color = "#ef4444";
+        label = "LOCK";
+      }
+
+      li.innerHTML = `
+    <div class="history-row">
+      <span class="history-action" style="color:${color};font-weight:600">
+        ● ${label}
+      </span>
+      <span class="history-time">
+        ${new Date(h.timestamp).toLocaleString()}
+      </span>
+    </div>
+  `;
+
+      historyList.appendChild(li);
+    });
 
     data.history.forEach((h) => {
       const li = document.createElement("li");
@@ -63,7 +88,6 @@ async function loadHistory() {
 
 // ====== BACK BUTTON ======
 backBtn.addEventListener("click", () => {
-  // ưu tiên quay về trang open (đúng flow hệ thống của bạn)
   window.location.href = "./open.html";
 });
 
