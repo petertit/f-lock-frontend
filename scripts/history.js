@@ -1,95 +1,170 @@
+// scripts/history.js
 import { API_BASE } from "../api/api.js";
-document.addEventListener("DOMContentLoaded", () => {
-  const historyList = document.getElementById("historyList");
-  const historyLockerName = document.getElementById("historyLockerName");
-  const backBtn = document.getElementById("back-to-detail-btn");
 
-  if (!historyList) return;
+const API = API_BASE;
 
-  const BASE_URL = API_BASE;
+function getCurrentUser() {
+  try {
+    const raw = sessionStorage.getItem("user");
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
-  const userRaw = sessionStorage.getItem("user");
-  const user = userRaw ? JSON.parse(userRaw) : null;
+function getUserId(user) {
+  if (!user) return null;
+  return user._id || user.id || user.userId || null;
+}
 
-  if (!user || !user.id) {
-    historyList.innerHTML = `<li style="text-align: center; color: red;">Lỗi: Không tìm thấy người dùng. Vui lòng đăng nhập lại.</li>`;
-    historyLockerName.textContent = "History Error";
+function formatTime(ts) {
+  try {
+    const d = new Date(ts);
+    if (Number.isNaN(d.getTime())) return String(ts);
+    return d.toLocaleString("vi-VN");
+  } catch {
+    return String(ts);
+  }
+}
+
+// ✅ lockerId lấy từ query hoặc session
+function getLockerIdHint() {
+  const url = new URL(window.location.href);
+  const q = url.searchParams.get("lockerId");
+  return (
+    q ||
+    sessionStorage.getItem("selected_locker") ||
+    sessionStorage.getItem("locker_to_open") ||
+    sessionStorage.getItem("selectedLocker") ||
+    ""
+  );
+}
+
+function setLockerTitle() {
+  const titleEl = document.getElementById("historyLockerName");
+  if (!titleEl) return;
+
+  const lockerId = getLockerIdHint();
+  titleEl.textContent = lockerId ? `Locker [${lockerId}]` : "Locker [History]";
+}
+
+function renderHistory(listEl, history) {
+  listEl.innerHTML = "";
+
+  if (!history.length) {
+    const li = document.createElement("li");
+    li.style.textAlign = "center";
+    li.style.color = "#aaa";
+    li.textContent = "Chưa có lịch sử.";
+    listEl.appendChild(li);
     return;
   }
 
-  historyLockerName.textContent = user.name + " History";
+  history.forEach((h) => {
+    const li = document.createElement("li");
+    li.style.padding = "12px 10px";
+    li.style.borderBottom = "1px solid rgba(255,255,255,0.08)";
 
-  async function fetchLockerHistory() {
-    const HISTORY_URL = `${BASE_URL}/history/${user.id}`;
+    const lockerId = h.lockerId ?? "";
+    const action = h.action ?? "";
+    const time = formatTime(h.timestamp || h.createdAt);
 
-    try {
-      const res = await fetch(HISTORY_URL);
-      const data = await res.json();
+    li.innerHTML = `
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;">
+        <div style="color:#fff;">Locker <b>${lockerId}</b></div>
+        <div style="color:#4aa3ff;font-weight:600;">${action}</div>
+      </div>
+      <div style="margin-top:6px;color:#aaa;font-size:13px;">${time}</div>
+    `;
+    listEl.appendChild(li);
+  });
+}
 
-      if (res.ok && data.history) {
-        renderHistory(data.history);
-      } else {
-        historyList.innerHTML = `<li style="text-align: center; color: red;">❌ Lỗi tải lịch sử tủ khóa.</li>`;
-      }
-    } catch (err) {
-      console.error("Fetch error:", err);
-      historyList.innerHTML = `<li style="text-align: center; color: red;">❌ Lỗi kết nối server API.</li>`;
-    }
+async function fetchHistory(userId) {
+  const url = `${API}/history/${encodeURIComponent(userId)}`;
+  const res = await fetch(url);
+
+  const contentType = res.headers.get("content-type") || "";
+  const text = await res.text();
+
+  if (!res.ok) throw new Error(`HTTP ${res.status} - ${text || "Not OK"}`);
+
+  if (!contentType.includes("application/json")) {
+    throw new Error(`Response không phải JSON: ${text.slice(0, 80)}...`);
   }
 
-  function renderHistory(history) {
-    historyList.innerHTML = "";
-    if (history.length === 0) {
-      historyList.innerHTML = `<li style="text-align: center; color: #aaa;">Chưa có sự kiện nào được ghi nhận.</li>`;
+  const data = JSON.parse(text);
+  if (!data.success || !Array.isArray(data.history)) {
+    throw new Error(data.error || "Invalid JSON structure (history)");
+  }
+
+  return data.history;
+}
+
+function wireBackButton() {
+  const btn = document.getElementById("back-to-detail-btn");
+  if (!btn) return;
+
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+
+    // ưu tiên: return=... từ query
+    const url = new URL(window.location.href);
+    const returnUrl =
+      url.searchParams.get("return") || url.searchParams.get("from");
+    if (returnUrl) {
+      window.location.href = returnUrl;
       return;
     }
 
-    history.forEach((item) => {
-      const li = document.createElement("li");
-      const date = new Date(item.timestamp);
-      const formattedDate = date.toLocaleDateString("vi-VN", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    // fallback: có lockerId thì về detail.html?lockerId=xx
+    const lockerId = getLockerIdHint();
+    if (lockerId) {
+      window.location.href = `./detail.html?lockerId=${encodeURIComponent(
+        lockerId
+      )}`;
+      return;
+    }
 
-      let actionText = "";
-      let color = "";
+    // fallback cuối: về index
+    window.location.href = "./index.html";
+  });
+}
 
-      const lockerIdText = item.lockerId ? ` (Tủ ${item.lockerId})` : "";
+async function loadHistory() {
+  const listEl = document.getElementById("historyList");
+  if (!listEl) return;
 
-      switch (item.action) {
-        case "OPENED":
-          actionText = "ĐÃ MỞ KHÓA" + lockerIdText;
-          color = "#00aa00";
-          break;
-        case "LOCKED":
-          actionText = "ĐÃ ĐÓNG KHÓA" + lockerIdText;
-          color = "#cc0000";
-          break;
-        case "REGISTERED":
-          actionText = "ĐĂNG KÝ TÀI KHOẢN";
-          color = "#1a73e8";
-          break;
-        default:
-          actionText = item.action;
-          color = "#aaa";
-      }
-      li.innerHTML = `
-                <span class="history-list-span-action" style="color: ${color};">${actionText}</span>
-                <span class="history-list-span-date">${formattedDate}</span>
-            `;
-      li.style.borderLeft = `5px solid ${color}`;
+  const user = getCurrentUser();
+  const userId = getUserId(user);
 
-      historyList.appendChild(li);
-    });
+  if (!userId) {
+    listEl.innerHTML =
+      '<li style="text-align:center;color:#aaa;">Bạn chưa đăng nhập.</li>';
+    window.location.href = "./logon.html";
+    return;
   }
 
-  backBtn.addEventListener("click", () => {
-    window.location.href = "detail.html";
-  });
+  // loading UI
+  listEl.innerHTML =
+    '<li style="text-align:center;color:#aaa;">Loading history...</li>';
 
-  fetchLockerHistory();
+  try {
+    const history = await fetchHistory(userId);
+    renderHistory(listEl, history);
+  } catch (err) {
+    console.error("❌ loadHistory error:", err);
+    listEl.innerHTML = `<li style="text-align:center;color:#ff8080;">
+      Không tải được lịch sử: ${err.message}
+    </li>`;
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  setLockerTitle();
+  wireBackButton();
+  loadHistory();
+
+  // ✅ tự đồng bộ mỗi 5s
+  setInterval(loadHistory, 5000);
 });
