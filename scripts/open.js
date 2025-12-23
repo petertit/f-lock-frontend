@@ -1,83 +1,65 @@
-// open.js
-// Dùng cho open.html (grid), đồng thời expose hàm cho index.html (slider) dùng chung.
+// open.js (FULL) — 6 LOCKERS + CLOSE/UNREGISTER LOGIC
 
-import { API_BASE } from "../api/api.js";
-const API = API_BASE;
+const RENDER_BRIDGE = "https://smart-locker-kgnx.onrender.com";
+const LOCKER_COUNT = 6;
+const VALID_LOCKERS = ["01", "02", "03", "04", "05", "06"];
 
-// ====== AUTH TOKEN (B3) ======
+// ===== USER =====
+const userRaw = sessionStorage.getItem("user");
+const currentUser = userRaw ? JSON.parse(userRaw) : null;
+
+// hỗ trợ nhiều kiểu key: _id | id
+const currentUserId = currentUser
+  ? String(currentUser._id || currentUser.id || "")
+  : null;
+
+// ===== STATE =====
+// lockerStates: { "01": {status:"EMPTY|LOCKED|OPEN", userId:"..."} }
+let lockerStates = {};
+
+// ===== JWT (optional) =====
 function getToken() {
   return sessionStorage.getItem("token");
 }
-function clearAuthAndGoLogin() {
-  sessionStorage.removeItem("token");
-  sessionStorage.removeItem("user");
-  alert("⚠️ Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.");
+
+// ===== helpers =====
+function isOpenPage() {
+  return window.location.pathname.toLowerCase().includes("open");
+}
+function normalizeId(v) {
+  if (v === null || v === undefined) return null;
+  return String(v);
+}
+function isValidLocker(id) {
+  return VALID_LOCKERS.includes(String(id));
+}
+
+function requireLogin() {
+  alert("Bạn cần đăng nhập để sử dụng chức năng này.");
   window.location.href = "./logon.html";
 }
 
-/**
- * Fetch wrapper: tự gắn Bearer token, handle 401.
- * @param {string} path  '/lockers/status'
- * @param {RequestInit} options
- */
 async function apiFetch(path, options = {}) {
-  const url = `${API}${path}`;
-  const token = getToken();
-
+  const url = `${RENDER_BRIDGE}${path}`;
   const headers = new Headers(options.headers || {});
+
+  // auto content-type for json body
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
-  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  // attach token if exists
+  const token = getToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
 
   const res = await fetch(url, { ...options, headers });
-
-  // ✅ Token hết hạn / sai
-  if (res.status === 401) {
-    clearAuthAndGoLogin();
-    throw new Error("Unauthorized");
-  }
   return res;
 }
 
-// ====== USER (đúng & an toàn) ======
-const userRaw = sessionStorage.getItem("user");
-const currentUser = userRaw ? JSON.parse(userRaw) : null;
-const currentUserId = currentUser
-  ? String(currentUser._id || currentUser.id)
-  : null;
-
-// Locker states cache: { "01": {status:"EMPTY|LOCKED|OPEN", userId:"..."} }
-let lockerStates = {};
-
-// endpoint update user (tùy backend mount kiểu nào)
+// ===== USER UPDATE (giữ compatibility nhiều endpoint) =====
 const USER_UPDATE_ENDPOINTS = ["/auth/update", "/update", "/account/update"];
-
-// ====== Helpers ======
-function isOpenPage() {
-  const p = window.location.pathname.toLowerCase();
-  return p.includes("open");
-}
-
-function normalizeId(id) {
-  if (id == null) return null;
-  return String(id);
-}
-
-function getMyLockerFromDB() {
-  if (!currentUserId) return null;
-  const uid = normalizeId(currentUserId);
-  for (const [lockerId, st] of Object.entries(lockerStates)) {
-    if (normalizeId(st.userId) === uid) return lockerId;
-  }
-  return null;
-}
-
-function getMyLockerFromUser() {
-  const v = currentUser?.registeredLocker;
-  if (typeof v === "string" && /^\d{2}$/.test(v)) return v;
-  return null;
-}
 
 async function updateUserField(field, value) {
   if (!currentUserId) return false;
@@ -94,70 +76,195 @@ async function updateUserField(field, value) {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.user) {
         sessionStorage.setItem("user", JSON.stringify(data.user));
-        Object.assign(currentUser, data.user);
+        // cập nhật currentUser (nếu có)
+        try {
+          Object.assign(currentUser, data.user);
+        } catch (_) {}
         return true;
       }
 
-      console.warn("updateUserField failed:", ep, data?.error || res.status);
-      return false;
-    } catch (e) {
-      console.warn("updateUserField error:", ep, e.message);
+      // nếu server trả lỗi rõ ràng
+      if (!res.ok) {
+        console.warn("updateUserField failed:", ep, data?.error || res.status);
+        return false;
+      }
+    } catch (err) {
+      console.warn("updateUserField error:", ep, err.message);
     }
   }
 
-  // fallback: update session để UI chạy, tránh block
-  const updated = { ...(currentUser || {}), [field]: value };
-  sessionStorage.setItem("user", JSON.stringify(updated));
-  if (currentUser) Object.assign(currentUser, updated);
+  // fallback: update session only (để UI không kẹt)
+  try {
+    const updated = { ...(currentUser || {}), [field]: value };
+    sessionStorage.setItem("user", JSON.stringify(updated));
+    if (currentUser) Object.assign(currentUser, updated);
+  } catch (_) {}
   return true;
 }
 
-function applyStateStyle(el, state, isMine) {
-  el.classList.remove(
+// ===== locker utils =====
+function getMyLockerFromDB() {
+  if (!currentUserId) return null;
+  const uid = normalizeId(currentUserId);
+
+  for (const [lockerId, st] of Object.entries(lockerStates)) {
+    if (normalizeId(st.userId) === uid) return lockerId;
+  }
+  return null;
+}
+
+function getMyLockerFromUser() {
+  const v = currentUser?.registeredLocker;
+  if (typeof v === "string" && /^\d{2}$/.test(v)) return v;
+  return null;
+}
+
+// auto sync registeredLocker <-> DB
+async function autoSyncUserLocker() {
+  if (!currentUserId) return;
+
+  const myDB = getMyLockerFromDB();
+  const myUser = getMyLockerFromUser();
+
+  if (myDB && myUser !== myDB) {
+    await updateUserField("registeredLocker", myDB);
+    return;
+  }
+
+  if (!myDB && myUser) {
+    await updateUserField("registeredLocker", null);
+  }
+}
+
+// ===== RASPI COMMANDS via backend =====
+async function sendRaspiCommand(action, lockerId) {
+  // action: "lock" | "unlock"
+  const res = await apiFetch(`/raspi/${action}`, {
+    method: "POST",
+    body: JSON.stringify({
+      lockerId,
+      user: currentUser?.email || null,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) {
+    throw new Error(data?.error || `Raspi ${action} failed`);
+  }
+  return true;
+}
+
+// ===== API: fetch lockers =====
+async function fetchLockerStates() {
+  const res = await apiFetch("/lockers/status", { method: "GET" });
+  const data = await res.json().catch(() => ({}));
+
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  if (!data.success || !Array.isArray(data.lockers)) {
+    throw new Error(data?.error || "Invalid lockers payload");
+  }
+
+  // normalize only 6 lockers
+  lockerStates = {};
+  data.lockers.forEach((l) => {
+    const id = String(l.lockerId).padStart(2, "0");
+    if (!isValidLocker(id)) return;
+    lockerStates[id] = {
+      status: String(l.status || "EMPTY"),
+      userId: l.ownerId ? String(l.ownerId) : null,
+    };
+  });
+
+  // ensure missing lockers exist locally
+  VALID_LOCKERS.forEach((id) => {
+    if (!lockerStates[id]) lockerStates[id] = { status: "EMPTY", userId: null };
+  });
+
+  // Update UI on index slider if exists
+  if (typeof window.updateSliderUI === "function") {
+    window.updateSliderUI(lockerStates);
+  }
+}
+
+// ===== API: update locker =====
+async function updateLockerStatus(lockerId, status, ownerId) {
+  const res = await apiFetch("/lockers/update", {
+    method: "POST",
+    body: JSON.stringify({
+      lockerId,
+      status,
+      ownerId,
+    }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) {
+    throw new Error(data?.error || `HTTP ${res.status}`);
+  }
+
+  lockerStates[lockerId] = {
+    status: data.locker?.status || status,
+    userId: data.locker?.ownerId || ownerId || null,
+  };
+
+  if (typeof window.updateSliderUI === "function") {
+    window.updateSliderUI(lockerStates);
+  }
+  return true;
+}
+
+// ===== UI STYLES =====
+function applyStateClass(item, state, isMine) {
+  item.classList.remove(
     "status-empty",
     "status-locked",
     "status-open",
     "status-other"
   );
-  el.style.outline = "";
-  el.style.border = "";
-  el.style.backgroundColor = "";
-  el.style.opacity = "1";
+
+  // reset inline
+  item.style.border = "";
+  item.style.backgroundColor = "";
+  item.style.opacity = "1";
 
   if (state.status === "EMPTY") {
-    el.classList.add("status-empty");
+    item.classList.add("status-empty");
     return;
   }
 
   if (isMine) {
     if (state.status === "LOCKED") {
-      el.classList.add("status-locked");
-      el.style.border = "2px solid #ffd000"; // vàng
-      el.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
+      // MY LOCKED => YELLOW
+      item.classList.add("status-locked");
+      item.style.border = "2px solid #ffd000";
+      item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
     } else if (state.status === "OPEN") {
-      el.classList.add("status-open");
-      el.style.border = "2px solid #00ff66"; // xanh lá
-      el.style.backgroundColor = "rgba(0, 255, 102, 0.14)";
+      // MY OPEN => GREEN
+      item.classList.add("status-open");
+      item.style.border = "2px solid #00ff66";
+      item.style.backgroundColor = "rgba(0, 255, 102, 0.14)";
     } else {
-      el.classList.add("status-locked");
-      el.style.border = "2px solid #ffd000";
-      el.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
+      item.classList.add("status-locked");
+      item.style.border = "2px solid #ffd000";
+      item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
     }
   } else {
-    el.classList.add("status-other");
-    el.style.border = "2px solid #ff2a2a"; // đỏ
-    el.style.backgroundColor = "rgba(255, 42, 42, 0.16)";
-    el.style.opacity = "0.85";
+    // OTHER USER => RED
+    item.classList.add("status-other");
+    item.style.border = "2px solid #ff2a2a";
+    item.style.backgroundColor = "rgba(255, 42, 42, 0.16)";
+    item.style.opacity = "0.85";
   }
 }
 
-function addHoverButton(el, { text, bg, color, onClick }) {
-  el.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
+function addHoverButton(item, opts) {
+  // remove any previous
+  item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
 
   const btn = document.createElement("button");
   btn.className = "hover-action-btn";
   btn.type = "button";
-  btn.textContent = text;
+  btn.textContent = opts.text;
 
   btn.style.position = "absolute";
   btn.style.left = "50%";
@@ -168,101 +275,32 @@ function addHoverButton(el, { text, bg, color, onClick }) {
   btn.style.borderRadius = "8px";
   btn.style.border = "0";
   btn.style.cursor = "pointer";
-  btn.style.background = bg;
-  btn.style.color = color;
+  btn.style.background = opts.bg;
+  btn.style.color = opts.color;
 
   btn.style.opacity = "0";
   btn.style.visibility = "hidden";
   btn.style.transition = "opacity 0.2s ease";
 
-  btn.addEventListener("click", (e) => {
+  btn.addEventListener("click", async (e) => {
     e.preventDefault();
     e.stopPropagation();
-    onClick?.();
+    await opts.onClick();
   });
 
-  el.appendChild(btn);
+  item.appendChild(btn);
 
-  el.addEventListener("mouseenter", () => {
+  item.addEventListener("mouseenter", () => {
     btn.style.visibility = "visible";
     btn.style.opacity = "1";
   });
-  el.addEventListener("mouseleave", () => {
+  item.addEventListener("mouseleave", () => {
     btn.style.visibility = "hidden";
     btn.style.opacity = "0";
   });
 }
 
-// ====== API calls (B3: dùng apiFetch) ======
-async function fetchLockerStates() {
-  const res = await apiFetch("/lockers/status", { method: "GET" });
-  const data = await res.json().catch(() => ({}));
-
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-  if (!data.success || !Array.isArray(data.lockers)) {
-    throw new Error(data?.error || "Sai cấu trúc lockers");
-  }
-
-  lockerStates = Object.fromEntries(
-    data.lockers.map((l) => [
-      String(l.lockerId),
-      {
-        status: String(l.status),
-        userId: l.ownerId ? String(l.ownerId) : null,
-      },
-    ])
-  );
-
-  window.__lockerStates = lockerStates;
-  if (typeof window.updateSliderUI === "function") {
-    window.updateSliderUI(lockerStates);
-  }
-
-  return lockerStates;
-}
-
-async function updateLockerStatus(lockerId, status, ownerId) {
-  const res = await apiFetch("/lockers/update", {
-    method: "POST",
-    body: JSON.stringify({ lockerId, status, ownerId }),
-  });
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) {
-    throw new Error(data?.error || `HTTP ${res.status}`);
-  }
-
-  lockerStates[lockerId] = {
-    status: data.locker.status,
-    userId: data.locker.ownerId || null,
-  };
-
-  window.__lockerStates = lockerStates;
-  if (typeof window.updateSliderUI === "function") {
-    window.updateSliderUI(lockerStates);
-  }
-
-  return true;
-}
-
-// ====== Sync logic (tự đồng bộ) ======
-async function autoSyncUserLocker() {
-  if (!currentUserId) return;
-
-  const myLockerDB = getMyLockerFromDB();
-  const myLockerUser = getMyLockerFromUser();
-
-  if (myLockerDB && myLockerUser !== myLockerDB) {
-    await updateUserField("registeredLocker", myLockerDB);
-    return;
-  }
-
-  if (!myLockerDB && myLockerUser) {
-    await updateUserField("registeredLocker", null);
-  }
-}
-
-// ====== UI (GRID) ======
+// ===== UI: update grid =====
 function updateGridUI() {
   if (!isOpenPage()) return;
 
@@ -276,15 +314,30 @@ function updateGridUI() {
 
   grid.querySelectorAll(".grid-item").forEach((item) => {
     const lockerId = item.dataset.lockerId;
+    if (!isValidLocker(lockerId)) return;
+
     const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
 
     item.style.position = "relative";
+
     const isMine = uid && normalizeId(state.userId) === uid;
 
-    applyStateStyle(item, state, isMine);
+    applyStateClass(item, state, isMine);
 
+    // remove old hover action buttons
     item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
-    if (isMine && state.status !== "EMPTY") {
+
+    // ✅ Button logic:
+    // - MY OPEN   => "ĐÓNG TỦ" (đỏ)
+    // - MY LOCKED => "HỦY ĐĂNG KÝ" (cam)
+    if (isMine && state.status === "OPEN") {
+      addHoverButton(item, {
+        text: "ĐÓNG TỦ",
+        bg: "#ff2a2a",
+        color: "#fff",
+        onClick: () => handleCloseLocker(lockerId),
+      });
+    } else if (isMine && state.status === "LOCKED") {
       addHoverButton(item, {
         text: "HỦY ĐĂNG KÝ",
         bg: "#ff8800",
@@ -293,21 +346,25 @@ function updateGridUI() {
       });
     }
 
+    // highlight my locker
     if (myLocker && lockerId === myLocker) {
       item.style.outline = "2px solid rgba(255,255,255,0.25)";
       item.style.outlineOffset = "4px";
+    } else {
+      item.style.outline = "";
+      item.style.outlineOffset = "";
     }
   });
 }
 
-function requireLogin() {
-  alert("Bạn cần đăng nhập để sử dụng chức năng này.");
-  window.location.href = "./logon.html";
-}
-
-// ====== Actions ======
+// ===== CLICK LOGIC =====
 function handleLockerClick(lockerId) {
   if (!currentUserId) return requireLogin();
+
+  if (!isValidLocker(lockerId)) {
+    alert("LockerId không hợp lệ.");
+    return;
+  }
 
   const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
 
@@ -315,6 +372,7 @@ function handleLockerClick(lockerId) {
   const myLockerUser = getMyLockerFromUser();
   const myLocker = myLockerDB || myLockerUser;
 
+  // EMPTY => register/open (but only if no other locker registered)
   if (state.status === "EMPTY") {
     if (myLocker && myLocker !== lockerId) {
       alert(
@@ -327,25 +385,67 @@ function handleLockerClick(lockerId) {
     return;
   }
 
+  // My locker => go face_log to open again (or to confirm)
   if (normalizeId(state.userId) === normalizeId(currentUserId)) {
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
     return;
   }
 
+  // Other user's locker
   alert(`Tủ ${lockerId} đang được người khác sử dụng.`);
 }
+
+// ===== ACTIONS =====
+async function handleCloseLocker(lockerId) {
+  if (!currentUserId) return requireLogin();
+
+  if (!confirm(`Bạn có chắc muốn ĐÓNG tủ ${lockerId} không?`)) return;
+
+  try {
+    // 1) lock physical (best effort)
+    await sendRaspiCommand("lock", lockerId);
+
+    // 2) DB => LOCKED (owner still me)
+    await updateLockerStatus(lockerId, "LOCKED", currentUserId);
+
+    await fetchLockerStates();
+    await autoSyncUserLocker();
+    updateGridUI();
+
+    alert(`✅ Đã đóng tủ ${lockerId} (LOCKED).`);
+  } catch (e) {
+    console.error(e);
+    alert(`❌ Đóng tủ thất bại: ${e.message}`);
+  }
+}
+window.handleCloseLocker = handleCloseLocker;
 
 async function handleUnregister(lockerId) {
   if (!currentUserId) return requireLogin();
 
   if (
-    !confirm(`Bạn có chắc muốn hủy đăng ký tủ ${lockerId}? Tủ sẽ trở về TRỐNG.`)
+    !confirm(
+      `Bạn có chắc muốn HỦY ĐĂNG KÝ tủ ${lockerId}? Tủ sẽ được KHÓA lại và trở về TRỐNG.`
+    )
   )
     return;
 
   try {
+    // 1) lock physical (best effort, nếu fail vẫn tiếp tục)
+    try {
+      await sendRaspiCommand("lock", lockerId);
+    } catch (e) {
+      console.warn(
+        "⚠️ Lock vật lý thất bại (vẫn tiếp tục cập nhật DB):",
+        e.message
+      );
+    }
+
+    // 2) DB => EMPTY
     await updateLockerStatus(lockerId, "EMPTY", null);
+
+    // 3) user => registeredLocker null
     await updateUserField("registeredLocker", null);
 
     await fetchLockerStates();
@@ -358,13 +458,33 @@ async function handleUnregister(lockerId) {
     alert(`❌ Hủy đăng ký thất bại: ${e.message}`);
   }
 }
+window.handleUnregister = handleUnregister;
 
-// callback từ face_log.html gọi về
+// ===== CALLBACK AFTER FACE/PASS SUCCESS =====
+// face_log.html hoặc pass_lock_login.html gọi window.openLockerSuccess(lockerId)
 window.openLockerSuccess = async (lockerId) => {
   if (!lockerId || !currentUserId) return;
 
+  if (!isValidLocker(lockerId)) {
+    alert("LockerId không hợp lệ.");
+    return;
+  }
+
   try {
+    // 1) unlock physical (best effort)
+    try {
+      await sendRaspiCommand("unlock", lockerId);
+    } catch (e) {
+      console.warn(
+        "⚠️ Unlock vật lý thất bại (vẫn tiếp tục cập nhật DB):",
+        e.message
+      );
+    }
+
+    // 2) DB => OPEN
     await updateLockerStatus(lockerId, "OPEN", currentUserId);
+
+    // 3) user => registeredLocker lockerId
     await updateUserField("registeredLocker", lockerId);
 
     alert(`🔓 Tủ ${lockerId} đã mở!`);
@@ -374,36 +494,34 @@ window.openLockerSuccess = async (lockerId) => {
   }
 };
 
-window.handleLockerClick = handleLockerClick;
-window.handleUnregister = handleUnregister;
-
-// ====== Init ======
+// ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
-  if (isOpenPage()) {
-    const grid = document.querySelector(".grid-container");
-    if (grid) {
-      grid.addEventListener("click", (e) => {
-        const item = e.target.closest(".grid-item");
-        if (!item) return;
-        if (e.target.closest("button")) return;
-
-        e.preventDefault();
-        handleLockerClick(item.dataset.lockerId);
-      });
-    }
-  }
-
   try {
+    // attach click handler for open page
+    if (isOpenPage()) {
+      const grid = document.querySelector(".grid-container");
+      if (grid) {
+        grid.addEventListener("click", (e) => {
+          const item = e.target.closest(".grid-item");
+          if (!item) return;
+          // ignore button clicks
+          if (e.target.closest("button")) return;
+          e.preventDefault();
+          handleLockerClick(item.dataset.lockerId);
+        });
+      }
+    }
+
     await fetchLockerStates();
     await autoSyncUserLocker();
     updateGridUI();
   } catch (e) {
     console.error(e);
-    alert("Lỗi tải chức năng tương tác tủ khóa. " + e.message);
+    alert("Không thể tải trạng thái tủ: " + e.message);
   }
 });
 
-// poll nhẹ để “tự đồng bộ” UI nếu có người khác thao tác
+// polling để tự đồng bộ khi người khác thao tác
 setInterval(async () => {
   try {
     await fetchLockerStates();
