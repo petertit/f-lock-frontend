@@ -14,7 +14,7 @@ const currentUserId = currentUser
   : null;
 
 // ===== STATE =====
-// lockerStates: { "01": {status:"EMPTY|LOCKED|OPEN", userId:"..."} }
+
 let lockerStates = {};
 
 // ===== JWT (optional) =====
