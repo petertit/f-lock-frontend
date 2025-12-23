@@ -1,5 +1,7 @@
+// logon.js
 document.addEventListener("DOMContentLoaded", () => {
-  if (sessionStorage.getItem("user")) {
+  // Nếu đã có token + user => vào index
+  if (sessionStorage.getItem("token") && sessionStorage.getItem("user")) {
     window.location.href = "./index.html";
     return;
   }
@@ -8,6 +10,28 @@ document.addEventListener("DOMContentLoaded", () => {
   if (!form) return;
 
   const API_BASE = "https://f-locker-backend.onrender.com";
+
+  async function tryLogin(endpoint, payload) {
+    const res = await fetch(`${API_BASE}${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    const text = await res.text();
+    let data = {};
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error(
+        `Backend did not return JSON. Endpoint=${endpoint}. Body=${text.slice(
+          0,
+          80
+        )}...`
+      );
+    }
+    return { res, data };
+  }
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -21,28 +45,22 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      const res = await fetch(`${API_BASE}/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-      const text = await res.text();
-      let data;
-
+      // ✅ Ưu tiên /auth/login, fallback /login (do dự án bạn từng dùng cả 2)
+      let result;
       try {
-        data = JSON.parse(text);
-      } catch {
-        console.error("Server returned non-JSON:", text);
-        throw new Error(
-          "Backend did not return JSON (wrong route or server error)"
-        );
+        result = await tryLogin("/auth/login", { email, password });
+        if (!result.res.ok)
+          throw new Error(result.data?.error || "auth/login failed");
+      } catch (_) {
+        result = await tryLogin("/login", { email, password });
       }
 
+      const { res, data } = result;
+
+      // ✅ Chuẩn JWT: cần có token + user
       if (res.ok && data.user) {
+        if (data.token) sessionStorage.setItem("token", data.token);
         sessionStorage.setItem("user", JSON.stringify(data.user));
-        if (data.token) {
-          sessionStorage.setItem("token", data.token);
-        }
 
         alert("✅ Login successful");
         window.location.href = "./index.html";
