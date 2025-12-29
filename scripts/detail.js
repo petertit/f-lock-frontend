@@ -1,158 +1,208 @@
-// public/js/detail.js (hoặc ./scripts/detail.js tùy bạn đặt)
-// ✅ JWT protected: /auth/user/:id + /auth/update
+// detail.js (FIXED) — JWT + correct routes + fallback
 
-const API_BASE = "https://f-locker-backend.onrender.com";
+document.addEventListener("DOMContentLoaded", async () => {
+  const API_BASE = "https://f-locker-backend.onrender.com";
 
-function getToken() {
-  return sessionStorage.getItem("token");
-}
+  const rawUser = sessionStorage.getItem("user");
+  const token = sessionStorage.getItem("token");
 
-function getSessionUser() {
-  const raw = sessionStorage.getItem("user");
-  return raw ? JSON.parse(raw) : null;
-}
-
-function getUserId(u) {
-  return u ? String(u.id || u._id || "") : "";
-}
-
-async function apiFetch(path, options = {}) {
-  const url = `${API_BASE}${path}`;
-  const headers = new Headers(options.headers || {});
-
-  if (options.body && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
+  if (!rawUser || !token) {
+    alert("⚠️ Bạn cần đăng nhập trước.");
+    window.location.href = "logon.html";
+    return;
   }
 
-  const token = getToken();
-  if (token && !headers.has("Authorization")) {
+  let user = JSON.parse(rawUser);
+
+  // ===== Elements =====
+  const nameEl = document.getElementById("name");
+  const emailEl = document.getElementById("email");
+  const phoneEl = document.getElementById("phone");
+  const passwordEl = document.getElementById("password");
+  const hintEl = document.getElementById("hint");
+  const lockerCodeEl = document.getElementById("lockerCode");
+  const registeredLockerEl = document.getElementById("registeredLocker");
+
+  const changeBtn = document.getElementById("change-btn");
+  const saveBtn = document.getElementById("save-btn");
+  const logoutBtn = document.getElementById("logout-btn");
+  const backBtn = document.getElementById("back-btn");
+  const historyBtn = document.getElementById("history-btn");
+
+  // ===== Helpers =====
+  function getUserId() {
+    return String(user?._id || user?.id || "");
+  }
+
+  async function apiFetch(path, options = {}) {
+    const headers = new Headers(options.headers || {});
+    if (options.body && !headers.has("Content-Type")) {
+      headers.set("Content-Type", "application/json");
+    }
     headers.set("Authorization", `Bearer ${token}`);
+
+    const res = await fetch(`${API_BASE}${path}`, {
+      ...options,
+      headers,
+    });
+    return res;
   }
 
-  const res = await fetch(url, { ...options, headers });
-  return res;
-}
+  async function fetchWithFallback(paths, options) {
+    let lastErr = null;
 
-function setText(id, text) {
-  const el = document.getElementById(id);
-  if (el) el.textContent = text ?? "";
-}
+    for (const p of paths) {
+      try {
+        const res = await apiFetch(p, options);
+        const text = await res.text();
+        let data = {};
+        try {
+          data = text ? JSON.parse(text) : {};
+        } catch {
+          data = { raw: text };
+        }
 
-function setValue(id, val) {
-  const el = document.getElementById(id);
-  if (el) el.value = val ?? "";
-}
+        // nếu route không tồn tại
+        if (res.status === 404) continue;
 
-async function loadDetail() {
-  const token = getToken();
-  const sessionUser = getSessionUser();
-
-  if (!token || !sessionUser) {
-    alert("⚠️ Bạn cần đăng nhập lại (thiếu token).");
-    window.location.href = "./logon.html";
-    return;
+        return { res, data, path: p };
+      } catch (e) {
+        lastErr = e;
+      }
+    }
+    throw lastErr || new Error("No endpoint matched");
   }
 
-  const userId = getUserId(sessionUser);
-  if (!userId) {
-    alert("⚠️ Không tìm thấy userId trong session.");
-    window.location.href = "./logon.html";
-    return;
+  function render() {
+    nameEl.textContent = user.name || "";
+    emailEl.textContent = user.email || "";
+    phoneEl.textContent = user.phone || "";
+    passwordEl.textContent = user.password || "";
+    hintEl.textContent = user.hint || "";
+
+    if (lockerCodeEl)
+      lockerCodeEl.textContent = user.lockerCode || "Chưa thiết lập";
+    if (registeredLockerEl)
+      registeredLockerEl.textContent =
+        user.registeredLocker || "Chưa đăng ký tủ";
   }
 
-  const res = await apiFetch(`/auth/user/${userId}`, { method: "GET" });
-  const data = await res.json().catch(() => ({}));
+  function setEditable(on) {
+    [
+      nameEl,
+      emailEl,
+      phoneEl,
+      passwordEl,
+      hintEl,
+      lockerCodeEl,
+      registeredLockerEl,
+    ].forEach((el) => {
+      if (!el) return;
+      el.contentEditable = on ? "true" : "false";
+      el.style.borderBottom = on ? "2px solid #0063ff" : "none";
+    });
 
-  if (!res.ok) {
-    alert(`❌ Không tải được user: ${data?.error || res.status}`);
-    return;
+    saveBtn.style.display = on ? "inline-block" : "none";
   }
 
-  const u = data.user || data?.data?.user || data;
-  if (!u) {
-    alert("❌ Response user không hợp lệ.");
-    return;
+  // ===== 1) Load fresh user from server (IMPORTANT) =====
+  try {
+    const id = getUserId();
+    if (!id) throw new Error("Missing user id in session");
+
+    const { res, data } = await fetchWithFallback(
+      [`/auth/user/${id}`, `/user/${id}`],
+      { method: "GET" }
+    );
+
+    if (res.status === 401) {
+      alert("⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+      sessionStorage.removeItem("user");
+      sessionStorage.removeItem("token");
+      window.location.href = "logon.html";
+      return;
+    }
+
+    if (res.ok && data.user) {
+      user = data.user;
+      sessionStorage.setItem("user", JSON.stringify(user));
+    }
+  } catch (err) {
+    console.warn("Không thể load lại user:", err.message);
   }
 
-  // ✅ render ra UI (tùy id element của bạn)
-  setText("detailNameText", u.name);
-  setText("detailEmailText", u.email);
-  setText("detailPhoneText", u.phone || "");
-  setText("detailHintText", u.hint || "");
-  setText("detailLockerCodeText", u.lockerCode ?? "Chưa thiết lập");
-  setText("detailRegisteredLockerText", u.registeredLocker ?? "Chưa đăng ký");
+  // render after refresh
+  render();
+  setEditable(false);
 
-  // ✅ nếu bạn có input edit
-  setValue("nameInput", u.name);
-  setValue("phoneInput", u.phone || "");
-  setValue("hintInput", u.hint || "");
-  setValue("lockerCodeInput", u.lockerCode || "");
+  // ===== UI events =====
+  changeBtn?.addEventListener("click", () => setEditable(true));
 
-  // ✅ sync session user
-  sessionStorage.setItem("user", JSON.stringify(u));
-}
+  saveBtn?.addEventListener("click", async () => {
+    const id = getUserId();
+    if (!id) {
+      alert("❌ Thiếu user id");
+      return;
+    }
 
-async function saveDetail() {
-  const token = getToken();
-  const sessionUser = getSessionUser();
-  if (!token || !sessionUser) {
-    alert("⚠️ Missing token. Hãy đăng nhập lại.");
-    window.location.href = "./logon.html";
-    return;
-  }
+    const newData = {
+      name: nameEl.textContent.trim(),
+      email: emailEl.textContent.trim(),
+      phone: phoneEl.textContent.trim(),
+      password: passwordEl.textContent.trim(),
+      hint: hintEl.textContent.trim(),
+      lockerCode: lockerCodeEl
+        ? lockerCodeEl.textContent.trim()
+        : user.lockerCode,
+      registeredLocker: registeredLockerEl
+        ? registeredLockerEl.textContent.trim()
+        : user.registeredLocker,
+    };
 
-  const userId = getUserId(sessionUser);
-  if (!userId) {
-    alert("⚠️ Không tìm thấy userId.");
-    return;
-  }
+    try {
+      const { res, data } = await fetchWithFallback(
+        ["/auth/update", "/update"],
+        {
+          method: "POST",
+          body: JSON.stringify({ id, ...newData }),
+        }
+      );
 
-  // lấy input
-  const name = document.getElementById("nameInput")?.value?.trim();
-  const phone = document.getElementById("phoneInput")?.value?.trim();
-  const hint = document.getElementById("hintInput")?.value?.trim();
-  const lockerCode = document.getElementById("lockerCodeInput")?.value?.trim();
+      if (res.status === 401) {
+        alert("⚠️ Missing/Expired token. Vui lòng đăng nhập lại.");
+        sessionStorage.removeItem("user");
+        sessionStorage.removeItem("token");
+        window.location.href = "logon.html";
+        return;
+      }
 
-  // nếu bạn có đổi password
-  const password = document.getElementById("passwordInput")?.value?.trim();
-
-  const payload = {
-    id: userId,
-    ...(name !== undefined ? { name } : {}),
-    ...(phone !== undefined ? { phone } : {}),
-    ...(hint !== undefined ? { hint } : {}),
-    ...(lockerCode !== undefined ? { lockerCode } : {}),
-    ...(password ? { password } : {}),
-  };
-
-  const res = await apiFetch("/auth/update", {
-    method: "POST",
-    body: JSON.stringify(payload),
+      if (res.ok && data.user) {
+        alert("✅ Cập nhật thành công!");
+        user = data.user;
+        sessionStorage.setItem("user", JSON.stringify(user));
+        render();
+        setEditable(false);
+      } else {
+        alert("❌ " + (data.error || data.message || "Không thể cập nhật"));
+      }
+    } catch (err) {
+      alert("❌ Lỗi: " + err.message);
+    }
   });
 
-  const data = await res.json().catch(() => ({}));
+  backBtn?.addEventListener(
+    "click",
+    () => (window.location.href = "menu.html")
+  );
 
-  if (!res.ok) {
-    alert(`❌ Update thất bại: ${data?.error || res.status}`);
-    return;
-  }
-
-  const updatedUser = data.user || data?.data?.user;
-  if (updatedUser) {
-    sessionStorage.setItem("user", JSON.stringify(updatedUser));
-  }
-
-  alert("✅ Lưu thay đổi thành công!");
-  await loadDetail();
-}
-
-document.addEventListener("DOMContentLoaded", () => {
-  // nút save (đúng id của bạn)
-  const btn = document.getElementById("saveBtn");
-  if (btn) btn.addEventListener("click", (e) => {
-    e.preventDefault();
-    saveDetail();
+  logoutBtn?.addEventListener("click", () => {
+    sessionStorage.removeItem("user");
+    sessionStorage.removeItem("token");
+    alert("🔓 Bạn đã đăng xuất!");
+    window.location.href = "logon.html";
   });
 
-  loadDetail();
+  historyBtn?.addEventListener("click", () => {
+    window.location.href = "history.html";
+  });
 });

@@ -1,21 +1,17 @@
-// open.js (FULL) — 6 LOCKERS + CLOSE/UNREGISTER LOGIC + SLIDER FIX
+// open.js (FIXED) — 6 LOCKERS + CLOSE/UNREGISTER + SLIDER SUPPORT + NO SYNTAX ERRORS
 
-const RENDER_BRIDGE = "https://smart-locker-kgnx.onrender.com";
+const API_BASE = "https://f-locker-backend.onrender.com";
 const VALID_LOCKERS = ["01", "02", "03", "04", "05", "06"];
 
 // ===== USER =====
 const userRaw = sessionStorage.getItem("user");
 const currentUser = userRaw ? JSON.parse(userRaw) : null;
 
-// hỗ trợ nhiều kiểu key: _id | id
 const currentUserId = currentUser
   ? String(currentUser._id || currentUser.id || "")
   : null;
 
-// ===== STATE =====
-let lockerStates = {};
-
-// ===== JWT (optional) =====
+// ===== JWT =====
 function getToken() {
   return sessionStorage.getItem("token");
 }
@@ -38,25 +34,25 @@ function requireLogin() {
 }
 
 async function apiFetch(path, options = {}) {
-  const url = `${RENDER_BRIDGE}${path}`;
+  const url = `${API_BASE}${path}`;
   const headers = new Headers(options.headers || {});
 
-  // auto content-type for json body
   if (options.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  // attach token if exists
   const token = getToken();
   if (token && !headers.has("Authorization")) {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
-  const res = await fetch(url, { ...options, headers });
-  return res;
+  return fetch(url, { ...options, headers });
 }
 
-// ===== USER UPDATE (giữ compatibility nhiều endpoint) =====
+// ===== STATE =====
+let lockerStates = {};
+
+// ===== USER UPDATE (fallback multiple endpoints) =====
 const USER_UPDATE_ENDPOINTS = ["/auth/update", "/update", "/account/update"];
 
 async function updateUserField(field, value) {
@@ -78,6 +74,15 @@ async function updateUserField(field, value) {
           Object.assign(currentUser, data.user);
         } catch (_) {}
         return true;
+      }
+
+      // nếu thiếu token -> báo rõ
+      if (res.status === 401) {
+        alert("⚠️ Missing/Expired token. Vui lòng đăng nhập lại.");
+        sessionStorage.removeItem("user");
+        sessionStorage.removeItem("token");
+        window.location.href = "./logon.html";
+        return false;
       }
 
       if (!res.ok) {
@@ -115,7 +120,6 @@ function getMyLockerFromUser() {
   return null;
 }
 
-// auto sync registeredLocker <-> DB
 async function autoSyncUserLocker() {
   if (!currentUserId) return;
 
@@ -134,7 +138,6 @@ async function autoSyncUserLocker() {
 
 // ===== RASPI COMMANDS via backend =====
 async function sendRaspiCommand(action, lockerId) {
-  // action: "lock" | "unlock"
   const res = await apiFetch(`/raspi/${action}`, {
     method: "POST",
     body: JSON.stringify({
@@ -160,7 +163,6 @@ async function fetchLockerStates() {
     throw new Error(data?.error || "Invalid lockers payload");
   }
 
-  // normalize only 6 lockers
   lockerStates = {};
   data.lockers.forEach((l) => {
     const id = String(l.lockerId).padStart(2, "0");
@@ -171,15 +173,12 @@ async function fetchLockerStates() {
     };
   });
 
-  // ensure missing lockers exist locally
   VALID_LOCKERS.forEach((id) => {
     if (!lockerStates[id]) lockerStates[id] = { status: "EMPTY", userId: null };
   });
 
-  // ✅ IMPORTANT: expose states for slider fallback
   window.__lockerStates = lockerStates;
 
-  // Update UI on index slider if exists
   if (typeof window.updateSliderUI === "function") {
     window.updateSliderUI(lockerStates);
   }
@@ -189,11 +188,7 @@ async function fetchLockerStates() {
 async function updateLockerStatus(lockerId, status, ownerId) {
   const res = await apiFetch("/lockers/update", {
     method: "POST",
-    body: JSON.stringify({
-      lockerId,
-      status,
-      ownerId,
-    }),
+    body: JSON.stringify({ lockerId, status, ownerId }),
   });
 
   const data = await res.json().catch(() => ({}));
@@ -206,16 +201,14 @@ async function updateLockerStatus(lockerId, status, ownerId) {
     userId: data.locker?.ownerId || ownerId || null,
   };
 
-  // ✅ keep slider in sync
   window.__lockerStates = lockerStates;
   if (typeof window.updateSliderUI === "function") {
     window.updateSliderUI(lockerStates);
   }
-
   return true;
 }
 
-// ===== UI STYLES =====
+// ===== UI helpers =====
 function applyStateClass(item, state, isMine) {
   item.classList.remove(
     "status-empty",
@@ -223,7 +216,6 @@ function applyStateClass(item, state, isMine) {
     "status-open",
     "status-other"
   );
-
   item.style.border = "";
   item.style.backgroundColor = "";
   item.style.opacity = "1";
@@ -314,18 +306,13 @@ function updateGridUI() {
     if (!isValidLocker(lockerId)) return;
 
     const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
-
     item.style.position = "relative";
 
     const isMine = uid && normalizeId(state.userId) === uid;
-
     applyStateClass(item, state, isMine);
 
     item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
 
-    // ✅ Button logic:
-    // - MY OPEN   => "ĐÓNG TỦ" (đỏ)
-    // - MY LOCKED => "HỦY ĐĂNG KÝ" (cam)
     if (isMine && state.status === "OPEN") {
       addHoverButton(item, {
         text: "ĐÓNG TỦ",
@@ -342,7 +329,6 @@ function updateGridUI() {
       });
     }
 
-    // highlight my locker
     if (myLocker && lockerId === myLocker) {
       item.style.outline = "2px solid rgba(255,255,255,0.25)";
       item.style.outlineOffset = "4px";
@@ -368,7 +354,6 @@ function handleLockerClick(lockerId) {
   const myLockerUser = getMyLockerFromUser();
   const myLocker = myLockerDB || myLockerUser;
 
-  // EMPTY => register/open (but only if no other locker registered)
   if (state.status === "EMPTY") {
     if (myLocker && myLocker !== lockerId) {
       alert(
@@ -381,18 +366,14 @@ function handleLockerClick(lockerId) {
     return;
   }
 
-  // My locker => go face_log to open again
   if (normalizeId(state.userId) === normalizeId(currentUserId)) {
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
     return;
   }
 
-  // Other user's locker
   alert(`Tủ ${lockerId} đang được người khác sử dụng.`);
 }
-
-// ✅ IMPORTANT: expose for slider (index.html)
 window.handleLockerClick = handleLockerClick;
 
 // ===== ACTIONS =====
@@ -505,7 +486,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// polling để tự đồng bộ khi người khác thao tác
 setInterval(async () => {
   try {
     await fetchLockerStates();
