@@ -223,9 +223,6 @@
      MENU PAGE (menu.css)
      ------------------------- */
   /* body in menu.css is centered with padding:40px; override to mobile-friendly */
-  body {
-    /* keep global padding already set */
-  }
 
   .container {
     width: 100% !important;
@@ -432,9 +429,6 @@
   /* -------------------------
      ABOUT US (about_us.css)
      ------------------------- */
-  .team-grid {
-    /* already stacked; if some pages still grid, allow 2 cols */
-  }
 
   /* In case about page uses grid columns */
   .team-grid.grid,
