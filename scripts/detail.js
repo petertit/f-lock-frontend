@@ -1,123 +1,158 @@
-document.addEventListener("DOMContentLoaded", async () => {
-  const user = JSON.parse(sessionStorage.getItem("user"));
-  if (!user) {
-    alert("⚠️ Bạn cần đăng nhập trước.");
-    window.location.href = "logon.html";
+// public/js/detail.js (hoặc ./scripts/detail.js tùy bạn đặt)
+// ✅ JWT protected: /auth/user/:id + /auth/update
+
+const API_BASE = "https://f-locker-backend.onrender.com";
+
+function getToken() {
+  return sessionStorage.getItem("token");
+}
+
+function getSessionUser() {
+  const raw = sessionStorage.getItem("user");
+  return raw ? JSON.parse(raw) : null;
+}
+
+function getUserId(u) {
+  return u ? String(u.id || u._id || "") : "";
+}
+
+async function apiFetch(path, options = {}) {
+  const url = `${API_BASE}${path}`;
+  const headers = new Headers(options.headers || {});
+
+  if (options.body && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const token = getToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  const res = await fetch(url, { ...options, headers });
+  return res;
+}
+
+function setText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text ?? "";
+}
+
+function setValue(id, val) {
+  const el = document.getElementById(id);
+  if (el) el.value = val ?? "";
+}
+
+async function loadDetail() {
+  const token = getToken();
+  const sessionUser = getSessionUser();
+
+  if (!token || !sessionUser) {
+    alert("⚠️ Bạn cần đăng nhập lại (thiếu token).");
+    window.location.href = "./logon.html";
     return;
   }
 
-  const nameEl = document.getElementById("name");
-  const emailEl = document.getElementById("email");
-  const phoneEl = document.getElementById("phone");
-  const passwordEl = document.getElementById("password");
-  const hintEl = document.getElementById("hint");
-  const lockerCodeEl = document.getElementById("lockerCode");
-  const registeredLockerEl = document.getElementById("registeredLocker");
-
-  const changeBtn = document.getElementById("change-btn");
-  const saveBtn = document.getElementById("save-btn");
-  const logoutBtn = document.getElementById("logout-btn");
-  const backBtn = document.getElementById("back-btn");
-  const historyBtn = document.getElementById("history-btn");
-
-  try {
-    const res = await fetch(
-      `https://f-locker-backend.onrender.com/user/${user.id}`
-    );
-    const data = await res.json();
-    if (res.ok && data.user) {
-      sessionStorage.setItem("user", JSON.stringify(data.user));
-      Object.assign(user, data.user);
-    }
-  } catch (err) {
-    console.warn("Không thể load lại thông tin user:", err.message);
+  const userId = getUserId(sessionUser);
+  if (!userId) {
+    alert("⚠️ Không tìm thấy userId trong session.");
+    window.location.href = "./logon.html";
+    return;
   }
 
-  nameEl.textContent = user.name || "";
-  emailEl.textContent = user.email || "";
-  phoneEl.textContent = user.phone || "";
-  passwordEl.textContent = user.password || "";
-  hintEl.textContent = user.hint || "";
-  if (lockerCodeEl)
-    lockerCodeEl.textContent = user.lockerCode || "Chưa thiết lập";
-  if (registeredLockerEl)
-    registeredLockerEl.textContent = user.registeredLocker || "Chưa đăng ký tủ";
+  const res = await apiFetch(`/auth/user/${userId}`, { method: "GET" });
+  const data = await res.json().catch(() => ({}));
 
-  changeBtn.addEventListener("click", () => {
-    [
-      nameEl,
-      emailEl,
-      phoneEl,
-      passwordEl,
-      hintEl,
-      lockerCodeEl,
-      registeredLockerEl,
-    ].forEach((el) => {
-      if (el) {
-        el.contentEditable = true;
-        el.style.borderBottom = "2px solid #0063ff";
-      }
-    });
-    saveBtn.style.display = "inline-block";
+  if (!res.ok) {
+    alert(`❌ Không tải được user: ${data?.error || res.status}`);
+    return;
+  }
+
+  const u = data.user || data?.data?.user || data;
+  if (!u) {
+    alert("❌ Response user không hợp lệ.");
+    return;
+  }
+
+  // ✅ render ra UI (tùy id element của bạn)
+  setText("detailNameText", u.name);
+  setText("detailEmailText", u.email);
+  setText("detailPhoneText", u.phone || "");
+  setText("detailHintText", u.hint || "");
+  setText("detailLockerCodeText", u.lockerCode ?? "Chưa thiết lập");
+  setText("detailRegisteredLockerText", u.registeredLocker ?? "Chưa đăng ký");
+
+  // ✅ nếu bạn có input edit
+  setValue("nameInput", u.name);
+  setValue("phoneInput", u.phone || "");
+  setValue("hintInput", u.hint || "");
+  setValue("lockerCodeInput", u.lockerCode || "");
+
+  // ✅ sync session user
+  sessionStorage.setItem("user", JSON.stringify(u));
+}
+
+async function saveDetail() {
+  const token = getToken();
+  const sessionUser = getSessionUser();
+  if (!token || !sessionUser) {
+    alert("⚠️ Missing token. Hãy đăng nhập lại.");
+    window.location.href = "./logon.html";
+    return;
+  }
+
+  const userId = getUserId(sessionUser);
+  if (!userId) {
+    alert("⚠️ Không tìm thấy userId.");
+    return;
+  }
+
+  // lấy input
+  const name = document.getElementById("nameInput")?.value?.trim();
+  const phone = document.getElementById("phoneInput")?.value?.trim();
+  const hint = document.getElementById("hintInput")?.value?.trim();
+  const lockerCode = document.getElementById("lockerCodeInput")?.value?.trim();
+
+  // nếu bạn có đổi password
+  const password = document.getElementById("passwordInput")?.value?.trim();
+
+  const payload = {
+    id: userId,
+    ...(name !== undefined ? { name } : {}),
+    ...(phone !== undefined ? { phone } : {}),
+    ...(hint !== undefined ? { hint } : {}),
+    ...(lockerCode !== undefined ? { lockerCode } : {}),
+    ...(password ? { password } : {}),
+  };
+
+  const res = await apiFetch("/auth/update", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 
-  saveBtn.addEventListener("click", async () => {
-    const newData = {
-      name: nameEl.textContent.trim(),
-      email: emailEl.textContent.trim(),
-      phone: phoneEl.textContent.trim(),
-      password: passwordEl.textContent.trim(),
-      hint: hintEl.textContent.trim(),
-      lockerCode: lockerCodeEl
-        ? lockerCodeEl.textContent.trim()
-        : user.lockerCode,
-      registeredLocker: registeredLockerEl
-        ? registeredLockerEl.textContent.trim()
-        : user.registeredLocker,
-    };
+  const data = await res.json().catch(() => ({}));
 
-    try {
-      const res = await fetch("https://f-locker-backend.onrender.com/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: user.id, ...newData }),
-      });
+  if (!res.ok) {
+    alert(`❌ Update thất bại: ${data?.error || res.status}`);
+    return;
+  }
 
-      const data = await res.json();
-      if (res.ok && data.user) {
-        alert("✅ Cập nhật thành công!");
-        sessionStorage.setItem("user", JSON.stringify(data.user));
-        [
-          nameEl,
-          emailEl,
-          phoneEl,
-          passwordEl,
-          hintEl,
-          lockerCodeEl,
-          registeredLockerEl,
-        ].forEach((el) => {
-          if (el) {
-            el.contentEditable = false;
-            el.style.borderBottom = "none";
-          }
-        });
-        saveBtn.style.display = "none";
-      } else {
-        alert("❌ " + (data.error || "Không thể cập nhật"));
-      }
-    } catch (err) {
-      alert("❌ Lỗi: " + err.message);
-    }
+  const updatedUser = data.user || data?.data?.user;
+  if (updatedUser) {
+    sessionStorage.setItem("user", JSON.stringify(updatedUser));
+  }
+
+  alert("✅ Lưu thay đổi thành công!");
+  await loadDetail();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  // nút save (đúng id của bạn)
+  const btn = document.getElementById("saveBtn");
+  if (btn) btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    saveDetail();
   });
 
-  backBtn.addEventListener("click", () => (window.location.href = "menu.html"));
-  logoutBtn.addEventListener("click", () => {
-    sessionStorage.removeItem("user");
-    alert("🔓 Bạn đã đăng xuất!");
-    window.location.href = "logon.html";
-  });
-
-  historyBtn.addEventListener("click", () => {
-    window.location.href = "history.html";
-  });
+  loadDetail();
 });
