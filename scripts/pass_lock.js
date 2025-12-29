@@ -1,16 +1,13 @@
 document.addEventListener("DOMContentLoaded", () => {
-  const userRaw = sessionStorage.getItem("user");
   const token = sessionStorage.getItem("token");
+  const userRaw = sessionStorage.getItem("user");
+  const user = userRaw ? JSON.parse(userRaw) : null;
 
-  if (!userRaw || !token) {
+  if (!user || !token) {
     alert("⚠️ Bạn cần đăng nhập trước khi mở tủ!");
     window.location.href = "logon.html";
     return;
   }
-
-  const form = document.getElementById("loginLockerForm");
-  const input = document.getElementById("lockerCode");
-  const row3 = document.getElementById("row3");
 
   const lockerId = sessionStorage.getItem("locker_to_open");
   if (!lockerId) {
@@ -19,8 +16,11 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // ✅ API base
-  const API = "https://f-locker-backend.onrender.com"; // đổi theo API_BASE của bạn
+  const form = document.getElementById("loginLockerForm");
+  const input = document.getElementById("lockerCode");
+  const row3 = document.getElementById("row3");
+
+  const API = "https://f-locker-backend.onrender.com"; // đổi theo API của bạn
 
   async function apiFetch(path, options = {}) {
     const headers = new Headers(options.headers || {});
@@ -34,19 +34,13 @@ document.addEventListener("DOMContentLoaded", () => {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const entered = input.value.trim();
-
-    if (!entered) {
-      alert("⚠️ Vui lòng nhập mã khóa tủ!");
-      return;
-    }
+    if (!entered) return alert("⚠️ Vui lòng nhập mã khóa tủ!");
 
     try {
       row3.textContent = "⏳ Đang kiểm tra mã...";
-      row3.style.color = "#ffffff";
+      row3.style.color = "#fff";
 
-      // ✅ Gửi lên backend để verify (đúng chuẩn)
-      // Bạn cần tạo endpoint này ở backend:
-      // POST /pass/verify { lockerId, lockerCode }
+      // ✅ verify code ở backend
       const res = await apiFetch("/pass/verify", {
         method: "POST",
         body: JSON.stringify({ lockerId, lockerCode: entered }),
@@ -54,7 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.ok) {
+      if (!res.ok || !data.success) {
         row3.textContent = "❌ Mã khóa không đúng!";
         row3.style.color = "#ff3333";
         return;
@@ -63,17 +57,14 @@ document.addEventListener("DOMContentLoaded", () => {
       row3.textContent = "✅ Mã chính xác — Đang mở tủ...";
       row3.style.color = "#00ff66";
 
-      // ✅ Nếu backend đã mở tủ + update DB xong thì quay về index luôn
-      // hoặc nếu bạn muốn vẫn dùng openLockerSuccess thì gọi nó ở đây:
-      // if (window.openLockerSuccess) await window.openLockerSuccess(lockerId);
-
-      alert(`🔓 Đã mở tủ ${lockerId} thành công!`);
-      window.location.href = "index.html";
+      // ✅ mở tủ (dùng hàm openLockerSuccess của open.js nếu có)
+      if (window.openLockerSuccess) {
+        await window.openLockerSuccess(lockerId);
+      } else {
+        window.location.href = "index.html";
+      }
     } catch (err) {
-      console.error(err);
       alert("❌ Lỗi kết nối: " + err.message);
-      row3.textContent = "❌ Lỗi kết nối.";
-      row3.style.color = "#ff3333";
     } finally {
       input.value = "";
     }
