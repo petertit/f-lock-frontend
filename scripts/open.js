@@ -1,7 +1,6 @@
-// open.js (FULL) — 6 LOCKERS + CLOSE/UNREGISTER LOGIC
+// open.js (FULL) — 6 LOCKERS + CLOSE/UNREGISTER LOGIC + SLIDER FIX
 
 const RENDER_BRIDGE = "https://smart-locker-kgnx.onrender.com";
-const LOCKER_COUNT = 6;
 const VALID_LOCKERS = ["01", "02", "03", "04", "05", "06"];
 
 // ===== USER =====
@@ -14,7 +13,6 @@ const currentUserId = currentUser
   : null;
 
 // ===== STATE =====
-
 let lockerStates = {};
 
 // ===== JWT (optional) =====
@@ -76,14 +74,12 @@ async function updateUserField(field, value) {
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.user) {
         sessionStorage.setItem("user", JSON.stringify(data.user));
-        // cập nhật currentUser (nếu có)
         try {
           Object.assign(currentUser, data.user);
         } catch (_) {}
         return true;
       }
 
-      // nếu server trả lỗi rõ ràng
       if (!res.ok) {
         console.warn("updateUserField failed:", ep, data?.error || res.status);
         return false;
@@ -180,6 +176,9 @@ async function fetchLockerStates() {
     if (!lockerStates[id]) lockerStates[id] = { status: "EMPTY", userId: null };
   });
 
+  // ✅ IMPORTANT: expose states for slider fallback
+  window.__lockerStates = lockerStates;
+
   // Update UI on index slider if exists
   if (typeof window.updateSliderUI === "function") {
     window.updateSliderUI(lockerStates);
@@ -207,9 +206,12 @@ async function updateLockerStatus(lockerId, status, ownerId) {
     userId: data.locker?.ownerId || ownerId || null,
   };
 
+  // ✅ keep slider in sync
+  window.__lockerStates = lockerStates;
   if (typeof window.updateSliderUI === "function") {
     window.updateSliderUI(lockerStates);
   }
+
   return true;
 }
 
@@ -222,7 +224,6 @@ function applyStateClass(item, state, isMine) {
     "status-other"
   );
 
-  // reset inline
   item.style.border = "";
   item.style.backgroundColor = "";
   item.style.opacity = "1";
@@ -234,12 +235,10 @@ function applyStateClass(item, state, isMine) {
 
   if (isMine) {
     if (state.status === "LOCKED") {
-      // MY LOCKED => YELLOW
       item.classList.add("status-locked");
       item.style.border = "2px solid #ffd000";
       item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
     } else if (state.status === "OPEN") {
-      // MY OPEN => GREEN
       item.classList.add("status-open");
       item.style.border = "2px solid #00ff66";
       item.style.backgroundColor = "rgba(0, 255, 102, 0.14)";
@@ -249,7 +248,6 @@ function applyStateClass(item, state, isMine) {
       item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
     }
   } else {
-    // OTHER USER => RED
     item.classList.add("status-other");
     item.style.border = "2px solid #ff2a2a";
     item.style.backgroundColor = "rgba(255, 42, 42, 0.16)";
@@ -258,7 +256,6 @@ function applyStateClass(item, state, isMine) {
 }
 
 function addHoverButton(item, opts) {
-  // remove any previous
   item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
 
   const btn = document.createElement("button");
@@ -324,7 +321,6 @@ function updateGridUI() {
 
     applyStateClass(item, state, isMine);
 
-    // remove old hover action buttons
     item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
 
     // ✅ Button logic:
@@ -385,7 +381,7 @@ function handleLockerClick(lockerId) {
     return;
   }
 
-  // My locker => go face_log to open again (or to confirm)
+  // My locker => go face_log to open again
   if (normalizeId(state.userId) === normalizeId(currentUserId)) {
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
@@ -396,17 +392,16 @@ function handleLockerClick(lockerId) {
   alert(`Tủ ${lockerId} đang được người khác sử dụng.`);
 }
 
+// ✅ IMPORTANT: expose for slider (index.html)
+window.handleLockerClick = handleLockerClick;
+
 // ===== ACTIONS =====
 async function handleCloseLocker(lockerId) {
   if (!currentUserId) return requireLogin();
-
   if (!confirm(`Bạn có chắc muốn ĐÓNG tủ ${lockerId} không?`)) return;
 
   try {
-    // 1) lock physical (best effort)
     await sendRaspiCommand("lock", lockerId);
-
-    // 2) DB => LOCKED (owner still me)
     await updateLockerStatus(lockerId, "LOCKED", currentUserId);
 
     await fetchLockerStates();
@@ -432,7 +427,6 @@ async function handleUnregister(lockerId) {
     return;
 
   try {
-    // 1) lock physical (best effort, nếu fail vẫn tiếp tục)
     try {
       await sendRaspiCommand("lock", lockerId);
     } catch (e) {
@@ -442,10 +436,7 @@ async function handleUnregister(lockerId) {
       );
     }
 
-    // 2) DB => EMPTY
     await updateLockerStatus(lockerId, "EMPTY", null);
-
-    // 3) user => registeredLocker null
     await updateUserField("registeredLocker", null);
 
     await fetchLockerStates();
@@ -461,7 +452,6 @@ async function handleUnregister(lockerId) {
 window.handleUnregister = handleUnregister;
 
 // ===== CALLBACK AFTER FACE/PASS SUCCESS =====
-// face_log.html hoặc pass_lock_login.html gọi window.openLockerSuccess(lockerId)
 window.openLockerSuccess = async (lockerId) => {
   if (!lockerId || !currentUserId) return;
 
@@ -471,7 +461,6 @@ window.openLockerSuccess = async (lockerId) => {
   }
 
   try {
-    // 1) unlock physical (best effort)
     try {
       await sendRaspiCommand("unlock", lockerId);
     } catch (e) {
@@ -481,10 +470,7 @@ window.openLockerSuccess = async (lockerId) => {
       );
     }
 
-    // 2) DB => OPEN
     await updateLockerStatus(lockerId, "OPEN", currentUserId);
-
-    // 3) user => registeredLocker lockerId
     await updateUserField("registeredLocker", lockerId);
 
     alert(`🔓 Tủ ${lockerId} đã mở!`);
@@ -497,14 +483,12 @@ window.openLockerSuccess = async (lockerId) => {
 // ===== INIT =====
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    // attach click handler for open page
     if (isOpenPage()) {
       const grid = document.querySelector(".grid-container");
       if (grid) {
         grid.addEventListener("click", (e) => {
           const item = e.target.closest(".grid-item");
           if (!item) return;
-          // ignore button clicks
           if (e.target.closest("button")) return;
           e.preventDefault();
           handleLockerClick(item.dataset.lockerId);
