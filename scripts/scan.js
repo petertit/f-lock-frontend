@@ -1,213 +1,247 @@
-document.addEventListener("DOMContentLoaded", () => {
-  // ===== CONFIG =====
-  const API_BASE = "https://f-locker-backend.onrender.com"; // đổi nếu backend khác
-  const ENDPOINTS = ["/raspi/recognize-remote", "/raspi/recognize"]; // thử lần lượt, cái nào tồn tại sẽ chạy
+// scan.js (FULL) — Fix: show local camera, correct element IDs, stable recognition loop
 
-  // ===== ELEMENTS =====
-  const userCamera = document.getElementById("userCamera"); // <video>
-  const raspiCamera = document.getElementById("raspiCamera"); // <img> (optional)
-  const statusEl = document.querySelector("#status");
+const BACKEND = "https://f-locker-backend.onrender.com";
 
-  // ===== SESSION =====
-  const userRaw = sessionStorage.getItem("user");
-  const token = sessionStorage.getItem("token");
-  const lockerId = sessionStorage.getItem("locker_to_open"); // nếu bạn dùng flow này
+// ===== Elements (match scan.html) =====
+const raspiCam = document.getElementById("raspiCamera"); // <img id="raspiCamera">
+const userCam =
+  document.getElementById("userCamera") ||
+  document.getElementById("cameraPreview") ||
+  document.querySelector("video");
 
-  if (!userRaw) {
-    alert("⚠️ Bạn cần đăng nhập trước!");
-    window.location.href = "logon.html";
+const statusEl = document.getElementById("status");
+
+const btnStartCam = document.getElementById("btnStartCam"); // <button id="btnStartCam">
+const btnSwitchCam = document.getElementById("btnSwitchCam"); // <button id="btnSwitchCam">
+
+// ===== State =====
+let stream = null;
+let usingFront = true;
+let isRecognizing = false;
+let recognitionTimer = null;
+
+function setStatus(text) {
+  if (statusEl) statusEl.textContent = text;
+  console.log(text);
+}
+
+function getToken() {
+  return sessionStorage.getItem("token");
+}
+
+function requireLogin() {
+  alert("⚠️ Bạn cần đăng nhập trước!");
+  window.location.href = "./logon.html";
+}
+
+// ===== Camera =====
+async function startLocalCamera() {
+  if (!userCam) {
+    console.error("Missing #userCamera (or video element).");
+    alert("Lỗi: Không tìm thấy thẻ video để hiển thị camera.");
     return;
   }
 
-  // ===== STATE =====
-  let stream = null;
-  let facingMode = "user"; // 'user' | 'environment'
-  let useRaspiCam = false; // ✅ FIX: mặc định dùng local cam để hiện video
-
-  // ===== UI HELPERS =====
-  function setStatus(text, color = "#4cff8a") {
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    statusEl.style.color = color;
+  // stop old stream
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
   }
 
-  function showLocalCameraMode() {
-    useRaspiCam = false;
-    if (raspiCamera) raspiCamera.style.display = "none";
-    if (userCamera) userCamera.style.display = "block";
+  setStatus("📷 Đang mở camera...");
+
+  const constraints = {
+    audio: false,
+    video: {
+      facingMode: usingFront ? "user" : "environment",
+      width: { ideal: 640 },
+      height: { ideal: 480 },
+    },
+  };
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+    // IMPORTANT: show the video (scan.html has display:none)
+    userCam.style.display = "block";
+    userCam.playsInline = true;
+    userCam.muted = true;
+    userCam.autoplay = true;
+
+    userCam.srcObject = stream;
+    await userCam.play();
+
+    setStatus("✅ Camera ready. Đang nhận diện...");
+    startRecognitionLoop();
+  } catch (err) {
+    console.error("getUserMedia error:", err);
+    setStatus("❌ Không mở được camera. Hãy cấp quyền camera.");
+    alert("❌ Không mở được camera. Bạn hãy cấp quyền camera cho trang web.");
   }
+}
 
-  function showRaspiCameraMode() {
-    useRaspiCam = true;
-    if (userCamera) userCamera.style.display = "none";
-    if (raspiCamera) raspiCamera.style.display = "block";
+function stopLocalCamera() {
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
   }
-
-  // ===== CAMERA =====
-  async function startLocalCamera() {
-    try {
-      setStatus("⏳ Đang mở camera...", "#4cff8a");
-
-      if (!navigator.mediaDevices?.getUserMedia) {
-        throw new Error("Trình duyệt không hỗ trợ camera (getUserMedia).");
-      }
-
-      // stop old
-      if (stream) {
-        stream.getTracks().forEach((t) => t.stop());
-        stream = null;
-      }
-
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
-
-      userCamera.srcObject = stream;
-      userCamera.muted = true;
-      userCamera.playsInline = true;
-      await userCamera.play();
-
-      showLocalCameraMode(); // ✅ quan trọng: hiện video
-
-      setStatus("✅ Camera ready. Đang nhận diện...", "#4cff8a");
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Không mở được camera: " + err.message, "#ff4b4b");
-    }
+  if (userCam) {
+    userCam.srcObject = null;
+    // keep display block (optional)
   }
+}
 
-  // ===== IMAGE CAPTURE (nén để tránh 413) =====
-  async function captureFrameBlob() {
-    if (!userCamera) throw new Error("Missing #userCamera");
-    if (!stream) throw new Error("Camera chưa sẵn sàng");
+async function switchCamera() {
+  usingFront = !usingFront;
+  await startLocalCamera();
+}
 
-    const w = userCamera.videoWidth || 640;
-    const h = userCamera.videoHeight || 480;
+// ===== Capture frame (reduce size to avoid 413) =====
+function captureFrameJpegBlob(videoEl, maxW = 480, quality = 0.6) {
+  return new Promise((resolve) => {
+    const vw = videoEl.videoWidth || 640;
+    const vh = videoEl.videoHeight || 480;
 
-    // ✅ nén kích thước xuống ~320px chiều ngang
-    const targetW = 320;
-    const scale = targetW / w;
-    const cw = Math.max(160, Math.round(w * scale));
-    const ch = Math.max(120, Math.round(h * scale));
+    const scale = Math.min(1, maxW / vw);
+    const cw = Math.round(vw * scale);
+    const ch = Math.round(vh * scale);
 
     const canvas = document.createElement("canvas");
     canvas.width = cw;
     canvas.height = ch;
+
     const ctx = canvas.getContext("2d");
-    ctx.drawImage(userCamera, 0, 0, cw, ch);
+    ctx.drawImage(videoEl, 0, 0, cw, ch);
 
-    // JPEG quality 0.6 (giảm size mạnh)
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.6)
+    canvas.toBlob(
+      (blob) => resolve(blob),
+      "image/jpeg",
+      quality // 0..1
     );
+  });
+}
 
-    if (!blob) throw new Error("Capture failed");
-    return blob;
-  }
+// ===== Recognition API =====
+async function postRecognize(blob) {
+  const token = getToken();
+  if (!token) throw new Error("Missing token");
 
-  // ===== API FETCH =====
-  async function apiPost(path, body, isForm = false) {
-    const headers = {};
-    if (!isForm) headers["Content-Type"] = "application/json";
-    if (token) headers["Authorization"] = `Bearer ${token}`;
+  // send multipart form-data (best for server)
+  const fd = new FormData();
+  fd.append("image", blob, "frame.jpg");
 
-    const res = await fetch(API_BASE + path, {
-      method: "POST",
-      headers,
-      body,
-    });
+  const lockerId = sessionStorage.getItem("locker_to_open") || null;
+  if (lockerId) fd.append("lockerId", lockerId);
 
-    // nếu trả HTML -> sẽ lỗi JSON, nên đọc text trước
-    const text = await res.text();
-    let data = {};
-    try {
-      data = text ? JSON.parse(text) : {};
-    } catch (_) {
-      data = { raw: text };
-    }
-
-    return { res, data };
-  }
-
-  async function recognizeOnce() {
-    // Nếu bạn có raspi stream/snapshot thì mới bật mode raspi.
-    // Hiện tại bạn nói backend đã post được -> dùng local cam là ổn.
-    if (useRaspiCam) {
-      // nếu muốn bạn có thể implement fetch snapshot
-      showLocalCameraMode();
-    }
-
-    const imgBlob = await captureFrameBlob();
-
-    // ưu tiên FormData
-    const fd = new FormData();
-    fd.append("image", imgBlob, "frame.jpg");
-    if (lockerId) fd.append("lockerId", lockerId);
-
-    // thử endpoint theo thứ tự
-    for (const ep of ENDPOINTS) {
-      const { res, data } = await apiPost(ep, fd, true);
-
-      if (res.status === 404) continue; // thử endpoint khác
-
-      if (!res.ok) {
-        const msg = data?.error || data?.message || `HTTP ${res.status}`;
-        throw new Error(msg);
-      }
-
-      // ✅ bạn tùy backend trả gì: matched / success / userId ...
-      return data;
-    }
-
-    throw new Error("Not Found (endpoint recognize không tồn tại)");
-  }
-
-  // ===== LOOP =====
-  let running = true;
-
-  async function loopRecognize() {
-    while (running) {
-      try {
-        const data = await recognizeOnce();
-
-        // ví dụ backend trả { success:true, matched:true }
-        if (data?.matched || data?.success === true) {
-          setStatus("✅ Nhận diện thành công!", "#00ff66");
-
-          // nếu bạn muốn mở tủ sau khi nhận diện:
-          // window.openLockerSuccess?.(lockerId);
-
-          // dừng loop
-          break;
-        } else {
-          setStatus("⚠️ Chưa khớp — thử lại...", "#ffd000");
-        }
-      } catch (err) {
-        console.error("Recognize error:", err.message);
-        setStatus("⚠️ Nhận diện lỗi — thử lại...", "#ff8800");
-      }
-
-      // delay giữa các lần nhận diện
-      await new Promise((r) => setTimeout(r, 1200));
-    }
-  }
-
-  // ===== INIT =====
-  startLocalCamera().then(() => {
-    // ✅ camera đã hiện thì mới bắt đầu nhận diện
-    loopRecognize();
+  const res = await fetch(`${BACKEND}/raspi/recognize-remote`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      // IMPORTANT: do NOT set Content-Type for FormData
+    },
+    body: fd,
   });
 
-  // ===== CLEANUP =====
-  window.addEventListener("beforeunload", () => {
-    running = false;
+  // If server returns HTML (nginx) -> prevent JSON crash
+  const ct = res.headers.get("content-type") || "";
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    // show short error
+    throw new Error(
+      `HTTP ${res.status}${text ? " - " + text.slice(0, 80) : ""}`
+    );
+  }
+
+  if (!ct.includes("application/json")) {
+    const text = await res.text().catch(() => "");
+    throw new Error("Response is not JSON: " + text.slice(0, 80));
+  }
+
+  return await res.json();
+}
+
+// ===== Loop =====
+function startRecognitionLoop() {
+  if (recognitionTimer) clearInterval(recognitionTimer);
+
+  // avoid multiple loops
+  isRecognizing = false;
+
+  recognitionTimer = setInterval(async () => {
+    if (!userCam || !stream) return;
+    if (isRecognizing) return;
+
     try {
-      if (stream) stream.getTracks().forEach((t) => t.stop());
-    } catch (_) {}
+      isRecognizing = true;
+
+      // wait video ready
+      if ((userCam.videoWidth || 0) < 10) return;
+
+      const blob = await captureFrameJpegBlob(userCam, 480, 0.6);
+      if (!blob) return;
+
+      const data = await postRecognize(blob);
+
+      // Optional: show raspi returned preview if backend returns url/base64
+      // (only if your backend supports it)
+      if (raspiCam && data?.previewUrl) {
+        raspiCam.src = data.previewUrl;
+      }
+
+      // SUCCESS
+      if (data?.success || data?.matched) {
+        setStatus("✅ Nhận diện thành công! Đang mở tủ...");
+
+        // If you already use open.js callback
+        const lockerId =
+          data?.lockerId || sessionStorage.getItem("locker_to_open");
+        if (lockerId && typeof window.openLockerSuccess === "function") {
+          await window.openLockerSuccess(lockerId);
+          return;
+        }
+
+        // fallback redirect
+        window.location.href = "./index.html";
+        return;
+      }
+
+      // NOT MATCH
+      setStatus("❌ Chưa khớp — thử lại...");
+    } catch (err) {
+      // common: 413 too large, 401 missing token, 404 wrong route
+      console.error("Recognize error:", err.message);
+      setStatus("⚠️ Nhận diện lỗi — thử lại...");
+    } finally {
+      isRecognizing = false;
+    }
+  }, 1500); // 1.5s / frame
+}
+
+function stopRecognitionLoop() {
+  if (recognitionTimer) clearInterval(recognitionTimer);
+  recognitionTimer = null;
+  isRecognizing = false;
+}
+
+// ===== Init =====
+document.addEventListener("DOMContentLoaded", () => {
+  const token = getToken();
+  const user = sessionStorage.getItem("user");
+  if (!token || !user) {
+    requireLogin();
+    return;
+  }
+
+  // Bind buttons (if exist)
+  if (btnStartCam) btnStartCam.addEventListener("click", startLocalCamera);
+  if (btnSwitchCam) btnSwitchCam.addEventListener("click", switchCamera);
+
+  // Auto start (so user sees camera immediately)
+  startLocalCamera();
+
+  // Cleanup
+  window.addEventListener("beforeunload", () => {
+    stopRecognitionLoop();
+    stopLocalCamera();
   });
 });

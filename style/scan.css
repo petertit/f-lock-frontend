@@ -1,101 +1,25 @@
-body {
-  background-color: #000;
-  color: #fff;
-  font-family: "Rubik", sans-serif;
-  margin: 0;
-  padding: 0px 100px;
-}
+/* scan.css — Fix: apply styles to real IDs used in scan.html */
 
-/* giữ nguyên các phần cũ của bạn nếu có, thêm/ghi đè đúng phần camera */
-
-:root {
-  --primary: #1e90ff;
-  --bg: #000;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--bg);
-  color: #fff;
-  font-family: Arial, sans-serif Note;
-}
-
-/* ✅ FIX: video của bạn là #userCamera, không phải #cameraPreview */
 #userCamera,
-#raspiCamera {
-  width: min(900px, 92vw);
-  height: auto;
-  border-radius: 18px;
-  display: none; /* JS sẽ bật đúng cái cần hiển thị */
-  background: #000;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
-}
-
-/* (nếu bạn vẫn còn dùng id #cameraPreview ở nơi khác thì giữ) */
 #cameraPreview {
-  width: min(900px, 92vw);
-  height: auto;
-  border-radius: 18px;
-  display: none;
-  background: #000;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
-}
-
-#status {
-  margin-top: 14px;
-  font-size: 18px;
-  color: #4cff8a;
-  text-align: center;
-}
-
-.header {
-  padding: 24px 30px 20px;
-  text-align: center;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-
-#row1 {
-  font-weight: 600;
-  color: #1a73e8;
-  font-size: 14px;
-  font-weight: 600;
-  margin-bottom: 8px;
-}
-.header h1 {
-  font-size: 40px;
-  color: #ccc;
-  margin-bottom: 8px;
-}
-#row3 {
-  font-size: 16px;
-  line-height: 1.4;
-  color: #aaa;
-}
-
-.face-scan-wrapper {
-  display: flex;
-  justify-content: center; /* căn giữa ngang */
-  align-items: center; /* căn giữa dọc */
   width: 100%;
-  min-height: 100vh; /* chiếm toàn màn hình (tùy nhu cầu) */
+  max-width: 820px;
+  height: auto;
+  border-radius: 16px;
+  display: block; /* IMPORTANT */
+  margin: 0 auto;
+  background: #000;
 }
 
-.face_scan {
-  width: 800px;
-  height: 800px;
-  border-radius: 15px;
+#raspiCamera,
+#raspiPreview {
+  width: 100%;
+  max-width: 820px;
+  height: auto;
+  border-radius: 16px;
   display: block;
-  border: 1px solid #1a2be8;
-  box-shadow: 25px solid #e81a4a #d31ae8;
+  margin: 0 auto;
+  background: #000;
 }
-.more-info {
-  text-align: center;
-  margin-top: 20px;
-  font-size: 26px;
-  color: #ccc;
-  margin-bottom: 8px;
-}
+
+/* giữ nguyên phần còn lại của bạn nếu có */
