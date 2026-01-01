@@ -1,204 +1,207 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const statusEl = document.querySelector("#status");
+// scan.js (FULL FIX)
 
-  const raspiImg = document.getElementById("raspiCamera");
-  const video = document.getElementById("userCamera");
+const API_BASE = "https://f-locker-backend.onrender.com";
+const RECOGNIZE_URL = `${API_BASE}/raspi/recognize-remote`;
 
-  const btnStart = document.getElementById("btnStartCam");
-  const btnSwitch = document.getElementById("btnSwitchCam");
-  const controls = document.getElementById("cameraControls");
+function getToken() {
+  return sessionStorage.getItem("token");
+}
+function getUser() {
+  const raw = sessionStorage.getItem("user");
+  return raw ? JSON.parse(raw) : null;
+}
+function getLockerToOpen() {
+  return sessionStorage.getItem("locker_to_open");
+}
 
-  // ✅ Backend Render của bạn (đúng domain hiện tại)
-  const BRIDGE_SERVER = "https://f-locker-backend.onrender.com/raspi";
+function dataURLToBase64(dataURL) {
+  const idx = dataURL.indexOf("base64,");
+  return idx >= 0 ? dataURL.slice(idx + 7) : dataURL;
+}
 
-  const userRaw = sessionStorage.getItem("user");
-  const currentUser = userRaw ? JSON.parse(userRaw) : null;
-  const token = sessionStorage.getItem("token");
+async function postRecognize(payload) {
+  const token = getToken();
 
-  if (!currentUser) {
-    alert("Chưa đăng nhập. Quay lại login.");
-    window.location.href = "logon.html";
-    return;
-  }
-  if (!token) {
-    alert("Missing token. Hãy login lại.");
-    window.location.href = "logon.html";
-    return;
-  }
-
-  let mediaStream = null;
-  let usingFront = true;
-  let isRasPiMode = false;
-  let pollTimer = null;
-  let backoffMs = 1500;
-
-  function setStatus(text, color = "#ccc") {
-    if (!statusEl) return;
-    statusEl.textContent = text;
-    statusEl.style.color = color;
-  }
-
-  function authHeaders() {
-    return {
+  const res = await fetch(RECOGNIZE_URL, {
+    method: "POST",
+    headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    };
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = { raw: text };
   }
 
-  /* =========================
-     PHONE / LAPTOP CAMERA
-     ========================= */
-  async function startUserCamera() {
-    try {
-      if (mediaStream) mediaStream.getTracks().forEach((t) => t.stop());
+  if (!res.ok) {
+    const msg = data?.error || data?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    err.data = data;
+    throw err;
+  }
 
-      const constraints = {
-        video: {
-          facingMode: usingFront ? "user" : { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      };
+  return data;
+}
 
-      mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
-      video.srcObject = mediaStream;
-      await video.play();
+document.addEventListener("DOMContentLoaded", async () => {
+  const user = getUser();
+  const lockerId = getLockerToOpen();
 
-      if (raspiImg) raspiImg.style.display = "none";
-      if (video) video.style.display = "block";
-      if (controls)
-        controls.style.display = /iPhone|Android/i.test(navigator.userAgent)
-          ? "flex"
-          : "none";
+  if (!user) {
+    alert("⚠️ Bạn cần đăng nhập trước.");
+    window.location.href = "logon.html";
+    return;
+  }
+  if (!lockerId) {
+    alert("⚠️ Không có tủ cần mở. Quay lại Open Locker.");
+    window.location.href = "open.html";
+    return;
+  }
 
-      setStatus(
-        usingFront ? "📱 Phone camera (Front)" : "📱 Phone camera (Back)",
-        "#00ffff"
-      );
+  const video = document.querySelector("video");
+  if (!video) {
+    alert("❌ scan.html thiếu thẻ <video>.");
+    return;
+  }
 
-      isRasPiMode = false;
-      backoffMs = 1500;
-      pollRecognition();
-    } catch (err) {
-      console.error(err);
-      setStatus("❌ Không mở được camera", "#ff3330");
-      alert("Không mở được camera. Hãy cấp quyền Camera.");
+  // (tuỳ bạn có id này hay không, không có cũng không sao)
+  const statusEl = document.getElementById("statusText");
+
+  const canvas = document.createElement("canvas");
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+
+  let busy = false;
+  let timer = null;
+
+  function setStatus(msg, color = "#ffd000") {
+    if (statusEl) {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+    } else {
+      console.log(msg);
     }
   }
 
-  btnStart?.addEventListener("click", startUserCamera);
-  btnSwitch?.addEventListener("click", async () => {
-    usingFront = !usingFront;
-    await startUserCamera();
-  });
+  async function startCamera() {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: "user" },
+      audio: false,
+    });
+    video.srcObject = stream;
+    await video.play();
+  }
 
-  /* =========================
-     RECOGNITION LOOP
-     ========================= */
-  async function pollRecognition() {
-    if (pollTimer) clearTimeout(pollTimer);
+  function captureSmallBase64() {
+    const vw = video.videoWidth || 640;
+    const vh = video.videoHeight || 480;
+
+    const maxW = 320;
+    const scale = Math.min(1, maxW / vw);
+
+    const w = Math.round(vw * scale);
+    const h = Math.round(vh * scale);
+
+    canvas.width = w;
+    canvas.height = h;
+    ctx.drawImage(video, 0, 0, w, h);
+
+    // quality thấp để tránh 413
+    const dataURL = canvas.toDataURL("image/jpeg", 0.45);
+    return dataURLToBase64(dataURL);
+  }
+
+  async function poll() {
+    if (busy) return;
+    busy = true;
 
     try {
-      // --- 1) PHONE/LAPTOP MODE: gửi ảnh base64 ---
-      if (!isRasPiMode) {
-        if (!video || !video.videoWidth) {
-          pollTimer = setTimeout(pollRecognition, 1200);
+      const img = captureSmallBase64();
+
+      const payload = {
+        imageBase64: img,
+        lockerId,
+        userId: user._id || user.id || null,
+        email: user.email || null,
+      };
+
+      const resp = await postRecognize(payload);
+
+      const d = resp.data || resp;
+
+      // bạn có thể đổi điều kiện match theo output raspi
+      const matched =
+        d?.matched === true ||
+        d?.recognized === true ||
+        d?.match === true ||
+        d?.ok === true ||
+        d?.result === "MATCH";
+
+      if (matched) {
+        setStatus("✅ Nhận diện thành công — đang mở tủ...", "#00ff66");
+
+        if (typeof window.openLockerSuccess === "function") {
+          await window.openLockerSuccess(lockerId);
           return;
         }
 
-        const canvas = document.createElement("canvas");
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        canvas.getContext("2d").drawImage(video, 0, 0);
-        const base64 = canvas.toDataURL("image/jpeg", 0.8).split(",")[1];
-
-        setStatus("🔄 Đang gửi ảnh nhận diện...", "#ffaa00");
-
-        const res = await fetch(`${BRIDGE_SERVER}/recognize-remote`, {
-          method: "POST",
-          headers: authHeaders(),
-          body: JSON.stringify({ image_data: base64 }),
-        });
-
-        const data = await safeJson(res);
-        if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-        backoffMs = 1500; // reset backoff nếu ok
-        handleResult(data);
+        // fallback
+        window.location.href = "open.html";
         return;
       }
 
-      // --- 2) RASPI MODE: gọi recognize (POST) ---
-      setStatus("🔄 Đang nhận diện (Raspi)...", "#ffaa00");
-
-      const res = await fetch(`${BRIDGE_SERVER}/recognize`, {
-        method: "POST",
-        headers: authHeaders(),
-        body: JSON.stringify({}), // giữ JSON để server parse ổn
-      });
-
-      const data = await safeJson(res);
-      if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-
-      backoffMs = 1500;
-      handleResult(data);
+      setStatus("⏳ Chưa khớp — thử lại...", "#ffd000");
     } catch (err) {
-      console.error("Recognize error:", err.message);
-      setStatus("⚠️ Nhận diện lỗi — thử lại...", "#ffaa00");
-
-      // backoff tăng dần để đỡ spam server
-      backoffMs = Math.min(backoffMs + 800, 6000);
-      pollTimer = setTimeout(pollRecognition, backoffMs);
-    }
-  }
-
-  async function safeJson(res) {
-    const ct = res.headers.get("content-type") || "";
-    if (ct.includes("application/json")) return await res.json();
-    const text = await res.text();
-    return { raw: text };
-  }
-
-  function normalizeName(v) {
-    return String(v || "")
-      .trim()
-      .toLowerCase();
-  }
-
-  function handleResult(data) {
-    // data có thể trả về {success:true, name:"..."} hoặc {success:true, match:true, person:"..."}
-    const detectedName = data?.name || data?.person || data?.user || "";
-    const ok =
-      data?.success === true &&
-      normalizeName(detectedName) &&
-      normalizeName(detectedName) === normalizeName(currentUser?.name);
-
-    if (ok) {
-      setStatus(`🔓 Welcome ${detectedName}`, "#00ff66");
-
-      const lockerId = sessionStorage.getItem("locker_to_open");
-      if (lockerId && typeof window.openLockerSuccess === "function") {
-        window.openLockerSuccess(lockerId);
-      } else {
-        alert(
-          "Nhận diện OK nhưng thiếu lockerId hoặc thiếu openLockerSuccess."
-        );
+      if (err.status === 401) {
+        setStatus("❌ Token thiếu/hết hạn — đăng nhập lại!", "#ff2a2a");
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        clearInterval(timer);
+        return;
       }
-      return;
-    }
 
-    pollTimer = setTimeout(pollRecognition, 1800);
+      if (err.status === 413) {
+        setStatus(
+          "❌ Ảnh quá lớn (413) — đang giảm size/quality...",
+          "#ff2a2a"
+        );
+      } else if (err.status === 404) {
+        setStatus("❌ Backend thiếu /raspi/recognize-remote (404)", "#ff2a2a");
+        clearInterval(timer);
+        return;
+      } else {
+        setStatus(`❌ Recognize error: ${err.message}`, "#ff2a2a");
+      }
+    } finally {
+      busy = false;
+    }
   }
 
-  /* =========================
-     INIT
-     ========================= */
-  // ✅ Bạn đang chạy trên pages.dev => dùng camera web
-  // (Nếu muốn bật Raspi mode thật sự, bạn phải stream/public URL, không phải localhost)
-  controls &&
-    (controls.style.display = /iPhone|Android/i.test(navigator.userAgent)
-      ? "flex"
-      : "none");
-  startUserCamera();
+  try {
+    setStatus("⏳ Đang mở camera...");
+    await startCamera();
+
+    // đợi video load size
+    const wait = setInterval(() => {
+      if (video.videoWidth > 0) {
+        clearInterval(wait);
+        setStatus("✅ Camera ready. Đang nhận diện...");
+        timer = setInterval(poll, 1200);
+      }
+    }, 200);
+  } catch (e) {
+    setStatus("❌ Không mở được camera: " + e.message, "#ff2a2a");
+  }
+
+  window.addEventListener("beforeunload", () => {
+    if (timer) clearInterval(timer);
+    const stream = video.srcObject;
+    if (stream?.getTracks) stream.getTracks().forEach((t) => t.stop());
+  });
 });
