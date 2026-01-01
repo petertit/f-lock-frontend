@@ -5,6 +5,51 @@ body {
   margin: 0;
   padding: 0px 100px;
 }
+
+/* giữ nguyên các phần cũ của bạn nếu có, thêm/ghi đè đúng phần camera */
+
+:root {
+  --primary: #1e90ff;
+  --bg: #000;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: #fff;
+  font-family: Arial, sans-serif Note;
+}
+
+/* ✅ FIX: video của bạn là #userCamera, không phải #cameraPreview */
+#userCamera,
+#raspiCamera {
+  width: min(900px, 92vw);
+  height: auto;
+  border-radius: 18px;
+  display: none; /* JS sẽ bật đúng cái cần hiển thị */
+  background: #000;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+/* (nếu bạn vẫn còn dùng id #cameraPreview ở nơi khác thì giữ) */
+#cameraPreview {
+  width: min(900px, 92vw);
+  height: auto;
+  border-radius: 18px;
+  display: none;
+  background: #000;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+}
+
+#status {
+  margin-top: 14px;
+  font-size: 18px;
+  color: #4cff8a;
+  text-align: center;
+}
+
 .header {
   padding: 24px 30px 20px;
   text-align: center;
@@ -37,14 +82,6 @@ body {
   align-items: center; /* căn giữa dọc */
   width: 100%;
   min-height: 100vh; /* chiếm toàn màn hình (tùy nhu cầu) */
-}
-#cameraPreview {
-  width: 800px;
-  height: 600px;
-  border-radius: 20px;
-  border: 3px solid #1a73e8;
-  box-shadow: 0 0 25px rgba(26, 115, 232, 0.5);
-  object-fit: cover;
 }
 
 .face_scan {
