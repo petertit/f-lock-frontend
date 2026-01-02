@@ -1,3 +1,4 @@
+//pass_lock.js
 document.addEventListener("DOMContentLoaded", () => {
   const token = sessionStorage.getItem("token");
   const userRaw = sessionStorage.getItem("user");

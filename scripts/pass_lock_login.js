@@ -1,3 +1,4 @@
+//pass_lock_login.js
 document.addEventListener("DOMContentLoaded", () => {
   const user = JSON.parse(sessionStorage.getItem("user"));
   if (!user) {

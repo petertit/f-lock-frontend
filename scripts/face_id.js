@@ -1,3 +1,4 @@
+//face_id.js
 import { API_BASE } from "../api/api.js";
 document.addEventListener("DOMContentLoaded", () => {
   const takeBtn = document.querySelector(".take-btn");
