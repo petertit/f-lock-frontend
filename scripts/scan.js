@@ -104,43 +104,43 @@ async function switchCamera() {
   await startCamera();
 }
 
-async function postRecognize(imageBase64) {
-  const token = getToken();
+async function postRecognizeFromVideo(videoEl) {
+  const token = sessionStorage.getItem("token");
   if (!token) throw new Error("Missing token");
+
+  // capture -> dataURL base64 (đã nén)
+  const canvas = document.createElement("canvas");
+  const vw = videoEl.videoWidth || 640;
+  const vh = videoEl.videoHeight || 480;
+
+  const maxW = 480;
+  const scale = Math.min(1, maxW / vw);
+
+  canvas.width = Math.round(vw * scale);
+  canvas.height = Math.round(vh * scale);
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+
+  const imageBase64 = canvas.toDataURL("image/jpeg", 0.6);
 
   const lockerId = sessionStorage.getItem("locker_to_open") || null;
 
-  const res = await fetch(`${BACKEND}/raspi/recognize-remote`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      imageBase64,
-      lockerId,
-    }),
-  });
+  const res = await fetch(
+    "https://f-locker-backend.onrender.com/raspi/recognize-remote",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ imageBase64, lockerId }),
+    }
+  );
 
-  const ct = (res.headers.get("content-type") || "").toLowerCase();
-  const text = await res.text().catch(() => "");
-
-  let data = null;
-  if (ct.includes("application/json")) {
-    try {
-      data = JSON.parse(text);
-    } catch (_) {}
-  }
-
-  if (!res.ok) {
-    throw new Error(
-      `HTTP ${res.status} - ${
-        data?.error || text.slice(0, 120) || "Request failed"
-      }`
-    );
-  }
-
-  return data || {};
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
 }
 
 function startLoop() {
