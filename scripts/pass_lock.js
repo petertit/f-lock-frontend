@@ -1,73 +1,137 @@
-//pass_lock.js
-document.addEventListener("DOMContentLoaded", () => {
-  const token = sessionStorage.getItem("token");
-  const userRaw = sessionStorage.getItem("user");
-  const user = userRaw ? JSON.parse(userRaw) : null;
+// scripts/pass_lock.js (FINAL - matches pass_lock.html)
 
-  if (!user || !token) {
-    alert("⚠️ Bạn cần đăng nhập trước khi mở tủ!");
-    window.location.href = "logon.html";
-    return;
+const API_BASE = "https://f-locker-backend.onrender.com";
+
+function getToken() {
+  return sessionStorage.getItem("token");
+}
+
+function getUser() {
+  try {
+    return JSON.parse(sessionStorage.getItem("user") || "null");
+  } catch {
+    return null;
   }
+}
 
-  const lockerId = sessionStorage.getItem("locker_to_open");
-  if (!lockerId) {
-    alert("Lỗi: Không tìm thấy tủ nào đang chờ mở. Đang quay lại...");
-    window.location.href = "open.html";
-    return;
-  }
+function getUserId(user) {
+  return String(user?._id || user?.id || "");
+}
 
-  const form = document.getElementById("loginLockerForm");
-  const input = document.getElementById("lockerCode");
-  const row3 = document.getElementById("row3");
+async function postUpdate(body, token) {
+  // ưu tiên /update vì routes backend của bạn mount trực tiếp "/update"
+  // nhưng có fallback /auth/update cho trường hợp khác
+  const paths = ["/update", "/auth/update"];
 
-  const API = "https://f-locker-backend.onrender.com"; // đổi theo API của bạn
-
-  async function apiFetch(path, options = {}) {
-    const headers = new Headers(options.headers || {});
-    headers.set("Authorization", `Bearer ${token}`);
-    if (options.body && !headers.has("Content-Type")) {
-      headers.set("Content-Type", "application/json");
-    }
-    return fetch(`${API}${path}`, { ...options, headers });
-  }
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const entered = input.value.trim();
-    if (!entered) return alert("⚠️ Vui lòng nhập mã khóa tủ!");
-
+  let last = null;
+  for (const p of paths) {
     try {
-      row3.textContent = "⏳ Đang kiểm tra mã...";
-      row3.style.color = "#fff";
-
-      // ✅ verify code ở backend
-      const res = await apiFetch("/pass/verify", {
+      const res = await fetch(`${API_BASE}${p}`, {
         method: "POST",
-        body: JSON.stringify({ lockerId, lockerCode: entered }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(body),
       });
 
       const data = await res.json().catch(() => ({}));
 
-      if (!res.ok || !data.success) {
-        row3.textContent = "❌ Mã khóa không đúng!";
-        row3.style.color = "#ff3333";
+      // nếu 404 thì thử path khác
+      if (res.status === 404) continue;
+
+      return { res, data, path: p };
+    } catch (e) {
+      last = e;
+    }
+  }
+  throw last || new Error("Cannot reach backend update endpoint");
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  const form = document.getElementById("lockerRegisterForm");
+  const input = document.getElementById("password");
+
+  if (!form || !input) {
+    console.error("Missing #lockerRegisterForm or #password");
+    alert("❌ Thiếu form hoặc input (id không khớp).");
+    return;
+  }
+
+  const token = getToken();
+  const user = getUser();
+
+  if (!token || !user) {
+    alert("⚠️ Bạn cần đăng nhập trước!");
+    location.href = "./logon.html";
+    return;
+  }
+
+  // lockerId: tùy open.js bạn set key nào thì mình lấy key đó
+  const lockerId =
+    sessionStorage.getItem("locker_to_open") ||
+    sessionStorage.getItem("selectedLocker") ||
+    sessionStorage.getItem("lockerId") ||
+    null;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const lockerCode = String(input.value || "").trim();
+    if (!lockerCode) {
+      alert("⚠️ Vui lòng nhập Locker Password!");
+      return;
+    }
+    if (lockerCode.length < 4) {
+      alert("⚠️ Mã tủ nên từ 4 ký tự trở lên.");
+      return;
+    }
+
+    const userId = getUserId(user);
+    if (!userId) {
+      alert("❌ Không lấy được userId trong session. Vui lòng đăng nhập lại.");
+      sessionStorage.removeItem("token");
+      sessionStorage.removeItem("user");
+      location.href = "./logon.html";
+      return;
+    }
+
+    // payload update theo backend AuthController của bạn
+    const payload = {
+      id: userId,
+      lockerCode,
+      ...(lockerId ? { registeredLocker: String(lockerId) } : {}),
+    };
+
+    const submitBtn = form.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    try {
+      const { res, data } = await postUpdate(payload, token);
+
+      if (res.status === 401) {
+        sessionStorage.removeItem("token");
+        sessionStorage.removeItem("user");
+        alert("⚠️ Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.");
+        location.href = "./logon.html";
         return;
       }
 
-      row3.textContent = "✅ Mã chính xác — Đang mở tủ...";
-      row3.style.color = "#00ff66";
-
-      // ✅ mở tủ (dùng hàm openLockerSuccess của open.js nếu có)
-      if (window.openLockerSuccess) {
-        await window.openLockerSuccess(lockerId);
-      } else {
-        window.location.href = "index.html";
+      if (!res.ok) {
+        throw new Error(data?.error || data?.message || "Update failed");
       }
+
+      if (data?.user) {
+        sessionStorage.setItem("user", JSON.stringify(data.user));
+      }
+
+      alert("✅ Đăng ký lock-code thành công!");
+      location.href = "./open.html";
     } catch (err) {
-      alert("❌ Lỗi kết nối: " + err.message);
+      console.error(err);
+      alert("❌ Không đăng ký được lock-code: " + err.message);
     } finally {
-      input.value = "";
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 });
