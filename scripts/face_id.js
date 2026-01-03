@@ -139,23 +139,55 @@ document.addEventListener("DOMContentLoaded", () => {
     return images;
   }
 
-  async function postJson(endpoint, body) {
+  async function postJson(endpoint, body, timeoutMs = 120000) {
     const token = getToken();
     if (!token) throw new Error("Missing token. Please login again.");
 
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(body || {}),
-    });
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), timeoutMs);
 
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok)
-      throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
-    return data;
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        signal: ctrl.signal,
+        body: JSON.stringify(body || {}),
+      });
+
+      const ct = res.headers.get("content-type") || "";
+      const text = await res.text().catch(() => "");
+
+      let data = {};
+      if (ct.includes("application/json")) {
+        try {
+          data = JSON.parse(text || "{}");
+        } catch {
+          data = {};
+        }
+      }
+
+      if (!res.ok) {
+        // show server error detail (cực quan trọng để debug 500)
+        throw new Error(
+          data?.error || data?.message || text || `HTTP ${res.status}`
+        );
+      }
+
+      return data;
+    } catch (e) {
+      // phân biệt abort timeout
+      if (e?.name === "AbortError") {
+        throw new Error(
+          "Timeout: Train quá lâu, tăng timeout hoặc tối ưu train."
+        );
+      }
+      throw e;
+    } finally {
+      clearTimeout(t);
+    }
   }
 
   async function startLaptopCamera() {
