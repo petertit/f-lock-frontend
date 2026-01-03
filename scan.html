@@ -47,19 +47,24 @@
     </div>
 
     <div class="face-scan-wrapper" style="text-align: center">
-      <img
-        id="raspiCamera"
-        style="display: none; max-width: 50%; border-radius: 12px"
-        alt="Raspberry Pi Camera"
-      />
+      <div class="camera-frame">
+        <img
+          id="raspiCamera"
+          style="display: none; max-width: 90%; border-radius: 12px"
+          alt="Raspberry Pi Camera"
+        />
 
-      <video
-        id="userCamera"
-        autoplay
-        playsinline
-        muted
-        style="display: none; max-width: 50%; border-radius: 12px"
-      ></video>
+        <video
+          id="userCamera"
+          autoplay
+          playsinline
+          muted
+          style="display: none; max-width: 90%; border-radius: 12px"
+        ></video>
+
+        <div class="oval-mask" aria-hidden="true"></div>
+        <div class="oval-border" aria-hidden="true"></div>
+      </div>
 
       <!-- ✅ alias để scan.js không báo thiếu #cameraPreview -->
       <video id="cameraPreview" style="display: none"></video>

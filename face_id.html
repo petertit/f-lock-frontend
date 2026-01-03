@@ -48,7 +48,12 @@
     <!-- Face Capture Section -->
     <div class="face-scan-section">
       <div class="face-scan-wrapper">
-        <img id="cameraPreview" alt="Raspberry Pi Camera Preview" />
+        <div class="camera-frame">
+          <img id="cameraPreview" alt="Raspberry Pi Camera Preview" />
+          <div class="oval-mask" aria-hidden="true"></div>
+          <div class="oval-border" aria-hidden="true"></div>
+        </div>
+
         <button class="take-btn">📸 Take</button>
         <p id="status">Checking Raspberry Pi connection...</p>
       </div>
