@@ -1,4 +1,4 @@
-// scripts/scan.js (FIXED)
+// scripts/scan.js (FIXED to match your scan.html)
 
 const BACKEND = "https://f-locker-backend.onrender.com";
 
@@ -7,11 +7,13 @@ let usingFront = true;
 let busy = false;
 let timer = null;
 
-// elements (sẽ gán sau khi DOM ready)
-let videoEl = null;
+// elements
+let videoEl = null; // #userCamera
+let raspiImgEl = null; // #raspiCamera (optional mode)
 let statusEl = null;
 let btnStartCam = null;
 let btnSwitchCam = null;
+let controlsEl = null;
 
 function setStatus(t) {
   if (statusEl) statusEl.textContent = t;
@@ -27,7 +29,7 @@ function requireLogin() {
   window.location.href = "./logon.html";
 }
 
-// Resize frame -> base64 JPEG (dataURL)
+// Resize frame -> base64 JPEG
 function captureFrameBase64(video, maxW = 420, quality = 0.55) {
   const vw = video.videoWidth || 640;
   const vh = video.videoHeight || 480;
@@ -121,15 +123,18 @@ function startLoop() {
 }
 
 async function startCamera() {
-  // ✅ luôn lấy lại element để không bị null
-  videoEl = document.getElementById("cameraPreview");
-
+  // ✅ get correct element from your HTML
+  videoEl = document.getElementById("userCamera");
   if (!videoEl) {
-    alert("❌ Không tìm thấy thẻ video (#cameraPreview).");
+    alert("❌ Không tìm thấy thẻ video (#userCamera).");
     return;
   }
 
-  // stop old
+  // show UI
+  videoEl.style.display = "block";
+  if (controlsEl) controlsEl.style.display = "flex";
+  if (raspiImgEl) raspiImgEl.style.display = "none";
+
   stopCamera();
 
   setStatus("📷 Đang mở camera...");
@@ -144,7 +149,6 @@ async function startCamera() {
       },
     });
 
-    videoEl.style.display = "block";
     videoEl.srcObject = stream;
     videoEl.muted = true;
     videoEl.playsInline = true;
@@ -165,11 +169,13 @@ async function switchCamera() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ✅ gán elements sau khi DOM ready
-  videoEl = document.getElementById("cameraPreview");
+  // ✅ bind elements after DOM ready
+  videoEl = document.getElementById("userCamera");
+  raspiImgEl = document.getElementById("raspiCamera");
   statusEl = document.getElementById("status");
   btnStartCam = document.getElementById("btnStartCam");
   btnSwitchCam = document.getElementById("btnSwitchCam");
+  controlsEl = document.getElementById("cameraControls");
 
   const token = getToken();
   const user = sessionStorage.getItem("user");
@@ -177,6 +183,9 @@ document.addEventListener("DOMContentLoaded", () => {
     requireLogin();
     return;
   }
+
+  // show controls (you had display:none)
+  if (controlsEl) controlsEl.style.display = "flex";
 
   btnStartCam?.addEventListener("click", startCamera);
   btnSwitchCam?.addEventListener("click", switchCamera);
