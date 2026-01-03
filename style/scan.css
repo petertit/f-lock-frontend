@@ -100,12 +100,13 @@ body {
   color: #ccc;
   margin-bottom: 8px;
 }
-/* ===== Oval camera guide (overlay) ===== */
-
+/* ===== Face oval guide (like sample) ===== */
 .camera-frame {
   position: relative;
   display: inline-block;
   width: min(90vw, 760px);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
 .camera-frame img,
@@ -115,59 +116,71 @@ body {
   display: block;
 }
 
-/* Làm tối bên ngoài oval */
-.oval-mask {
+/* dark outside oval */
+.oval-dim {
   position: absolute;
   inset: 0;
   pointer-events: none;
 
-  /* mask: trong suốt ở giữa (oval), tối ở ngoài */
+  /* Hole is a rounded-oval (squircle-ish) */
   -webkit-mask: radial-gradient(
-    ellipse 36% 48% at 50% 45%,
+    ellipse 34% 46% at 50% 46%,
     transparent 0 99%,
     #000 100%
   );
   mask: radial-gradient(
-    ellipse 36% 48% at 50% 45%,
+    ellipse 34% 46% at 50% 46%,
     transparent 0 99%,
     #000 100%
   );
 
   background: rgba(0, 0, 0, 0.55);
-  border-radius: 12px; /* khớp style hiện tại */
 }
 
-/* Viền oval hướng dẫn */
+/* green border */
 .oval-border {
   position: absolute;
   left: 50%;
-  top: 45%;
+  top: 46%;
   transform: translate(-50%, -50%);
-  width: 72%;
+  width: 68%;
   height: 86%;
-  border: 2px solid rgba(26, 115, 232, 0.95);
   border-radius: 999px;
+  border: 3px solid rgba(55, 208, 112, 0.95);
   pointer-events: none;
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
-/* Mobile: oval nhỏ lại để vừa khung */
+/* white small arcs like sample */
+.oval-arc {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  width: 68%;
+  height: 86%;
+  border-radius: 999px;
+  pointer-events: none;
+  border: 3px solid transparent;
+}
+
+/* top-left white arc */
+.oval-arc.arc-1 {
+  border-left-color: rgba(255, 255, 255, 0.9);
+  border-top-color: rgba(255, 255, 255, 0.9);
+}
+
+/* bottom-left white arc */
+.oval-arc.arc-2 {
+  border-left-color: rgba(255, 255, 255, 0.9);
+  border-bottom-color: rgba(255, 255, 255, 0.9);
+  transform: translate(-50%, -50%) rotate(20deg);
+}
+
 @media (max-width: 480px) {
-  .oval-border {
+  .oval-border,
+  .oval-arc {
     width: 78%;
     height: 88%;
-  }
-
-  .oval-mask {
-    -webkit-mask: radial-gradient(
-      ellipse 38% 50% at 50% 45%,
-      transparent 0 99%,
-      #000 100%
-    );
-    mask: radial-gradient(
-      ellipse 38% 50% at 50% 45%,
-      transparent 0 99%,
-      #000 100%
-    );
   }
 }

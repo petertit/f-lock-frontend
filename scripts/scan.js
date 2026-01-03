@@ -1,4 +1,4 @@
-// scripts/scan.js (FIXED to match your scan.html)
+// scripts/scan.js (FINAL - matches scan.html + oval crop)
 
 const BACKEND = "https://f-locker-backend.onrender.com";
 
@@ -9,7 +9,7 @@ let timer = null;
 
 // elements
 let videoEl = null; // #userCamera
-let raspiImgEl = null; // #raspiCamera (optional mode)
+let raspiImgEl = null; // #raspiCamera (optional)
 let statusEl = null;
 let btnStartCam = null;
 let btnSwitchCam = null;
@@ -29,23 +29,73 @@ function requireLogin() {
   window.location.href = "./logon.html";
 }
 
-// Resize frame -> base64 JPEG
-function captureFrameBase64(video, maxW = 420, quality = 0.55) {
-  const vw = video.videoWidth || 640;
-  const vh = video.videoHeight || 480;
-  const scale = Math.min(1, maxW / vw);
+/**
+ * Capture ONLY oval region from a video element.
+ * Returns dataURL (data:image/jpeg;base64,...)
+ *
+ * opts must match your CSS oval position:
+ *  - center at (50%, 46%)
+ *  - size: 68% width, 86% height
+ */
+function captureOvalFromVideo(videoEl, opts = {}) {
+  const {
+    cx = 0.5,
+    cy = 0.46,
+    ow = 0.68,
+    oh = 0.86,
 
-  const cw = Math.round(vw * scale);
-  const ch = Math.round(vh * scale);
+    outW = 320,
+    outH = 420,
 
-  const canvas = document.createElement("canvas");
-  canvas.width = cw;
-  canvas.height = ch;
+    jpeg = true,
+    quality = 0.75,
+  } = opts;
 
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(video, 0, 0, cw, ch);
+  const vw = videoEl.videoWidth || 640;
+  const vh = videoEl.videoHeight || 480;
 
-  return canvas.toDataURL("image/jpeg", quality);
+  // bounding box of oval in source coordinates
+  const boxW = vw * ow;
+  const boxH = vh * oh;
+  let boxX = vw * cx - boxW / 2;
+  let boxY = vh * cy - boxH / 2;
+
+  // clamp to video bounds to avoid negative crop
+  boxX = Math.max(0, Math.min(boxX, vw - boxW));
+  boxY = Math.max(0, Math.min(boxY, vh - boxH));
+
+  const c = document.createElement("canvas");
+  c.width = outW;
+  c.height = outH;
+  const ctx = c.getContext("2d");
+
+  // Fill black background for JPEG (no alpha)
+  if (jpeg) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, outW, outH);
+  }
+
+  // Clip ellipse (oval)
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(
+    outW / 2,
+    outH / 2,
+    outW * 0.5 * 0.98,
+    outH * 0.5 * 0.98,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.closePath();
+  ctx.clip();
+
+  // Draw the oval bounding box from source -> full output canvas
+  ctx.drawImage(videoEl, boxX, boxY, boxW, boxH, 0, 0, outW, outH);
+
+  ctx.restore();
+
+  return jpeg ? c.toDataURL("image/jpeg", quality) : c.toDataURL("image/png");
 }
 
 function stopLoop() {
@@ -92,10 +142,22 @@ function startLoop() {
     try {
       busy = true;
 
+      // wait until camera is really ready
       if ((videoEl.videoWidth || 0) < 10) return;
 
-      const frame64 = captureFrameBase64(videoEl, 420, 0.55);
-      const data = await postRecognize(frame64);
+      // ✅ ONLY send oval-cropped image
+      const frameDataUrl = captureOvalFromVideo(videoEl, {
+        cx: 0.5,
+        cy: 0.46,
+        ow: 0.68,
+        oh: 0.86,
+        outW: 320,
+        outH: 420,
+        jpeg: true,
+        quality: 0.75,
+      });
+
+      const data = await postRecognize(frameDataUrl);
 
       if (data?.success || data?.matched) {
         setStatus("✅ Nhận diện thành công! Đang mở tủ...");
@@ -123,7 +185,6 @@ function startLoop() {
 }
 
 async function startCamera() {
-  // ✅ get correct element from your HTML
   videoEl = document.getElementById("userCamera");
   if (!videoEl) {
     alert("❌ Không tìm thấy thẻ video (#userCamera).");
@@ -136,7 +197,6 @@ async function startCamera() {
   if (raspiImgEl) raspiImgEl.style.display = "none";
 
   stopCamera();
-
   setStatus("📷 Đang mở camera...");
 
   try {
@@ -169,7 +229,6 @@ async function switchCamera() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // ✅ bind elements after DOM ready
   videoEl = document.getElementById("userCamera");
   raspiImgEl = document.getElementById("raspiCamera");
   statusEl = document.getElementById("status");

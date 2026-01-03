@@ -178,7 +178,15 @@ document.addEventListener("DOMContentLoaded", () => {
         ctx.drawImage(videoEl, 0, 0, vw, vh);
 
         // backend/Raspi thường nhận base64 không có prefix
-        const b64 = canvas.toDataURL("image/jpeg", 0.9).split(",")[1];
+        const dataUrl = captureOvalFromVideo(videoEl, {
+          outW: 360,
+          outH: 480,
+          jpeg: true,
+          quality: 0.9,
+        });
+
+        images.push(dataUrl.split(",")[1]); // gửi base64 thuần như bạn đang làm
+
         images.push(b64);
 
         await new Promise((r) => setTimeout(r, delayMs));
@@ -345,3 +353,63 @@ document.addEventListener("DOMContentLoaded", () => {
 
   init();
 });
+function captureOvalFromVideo(videoEl, opts = {}) {
+  const {
+    // phải khớp với CSS oval: top=46%, width=68%, height=86%
+    cx = 0.5,
+    cy = 0.46,
+    ow = 0.68,
+    oh = 0.86,
+    outW = 360, // ảnh output nhỏ vừa đủ train/recognize
+    outH = 480,
+    jpeg = true, // true => JPEG (nền đen), false => PNG (trong suốt ngoài oval)
+    quality = 0.9,
+  } = opts;
+
+  const vw = videoEl.videoWidth || 640;
+  const vh = videoEl.videoHeight || 480;
+
+  // Oval bounding box trên frame gốc
+  const boxW = vw * ow;
+  const boxH = vh * oh;
+  const boxX = vw * cx - boxW / 2;
+  const boxY = vh * cy - boxH / 2;
+
+  // Canvas output
+  const c = document.createElement("canvas");
+  c.width = outW;
+  c.height = outH;
+  const ctx = c.getContext("2d");
+
+  // Nếu JPEG: fill nền đen để không bị alpha mất dữ liệu
+  if (jpeg) {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, outW, outH);
+  }
+
+  // Clip ellipse (oval)
+  ctx.save();
+  ctx.beginPath();
+  ctx.ellipse(
+    outW / 2,
+    outH / 2,
+    outW * 0.5 * 0.98,
+    outH * 0.5 * 0.98,
+    0,
+    0,
+    Math.PI * 2
+  );
+  ctx.closePath();
+  ctx.clip();
+
+  // Draw cropped region into output canvas
+  ctx.drawImage(videoEl, boxX, boxY, boxW, boxH, 0, 0, outW, outH);
+
+  ctx.restore();
+
+  // Export
+  if (jpeg) {
+    return c.toDataURL("image/jpeg", quality); // "data:image/jpeg;base64,..."
+  }
+  return c.toDataURL("image/png"); // "data:image/png;base64,..."
+}

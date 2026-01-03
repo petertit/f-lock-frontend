@@ -48,10 +48,12 @@
     <!-- Face Capture Section -->
     <div class="face-scan-section">
       <div class="face-scan-wrapper">
-        <div class="camera-frame">
-          <img id="cameraPreview" alt="Raspberry Pi Camera Preview" />
-          <div class="oval-mask" aria-hidden="true"></div>
-          <div class="oval-border" aria-hidden="true"></div>
+        <div class="camera-frame" id="faceFrame">
+          <img id="cameraPreview" alt="Camera Preview" />
+          <div class="oval-dim"></div>
+          <div class="oval-border"></div>
+          <div class="oval-arc arc-1"></div>
+          <div class="oval-arc arc-2"></div>
         </div>
 
         <button class="take-btn">📸 Take</button>
