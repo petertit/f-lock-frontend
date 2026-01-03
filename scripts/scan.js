@@ -1,16 +1,17 @@
-// scripts/scan.js
-const BACKEND = "https://f-locker-backend.onrender.com";
+// scripts/scan.js (FIXED)
 
-// Elements (theo scan.html bạn đưa)
-const videoEl = document.getElementById("cameraPreview");
-const statusEl = document.getElementById("status");
-const btnStartCam = document.getElementById("btnStartCam");
-const btnSwitchCam = document.getElementById("btnSwitchCam");
+const BACKEND = "https://f-locker-backend.onrender.com";
 
 let stream = null;
 let usingFront = true;
 let busy = false;
 let timer = null;
+
+// elements (sẽ gán sau khi DOM ready)
+let videoEl = null;
+let statusEl = null;
+let btnStartCam = null;
+let btnSwitchCam = null;
 
 function setStatus(t) {
   if (statusEl) statusEl.textContent = t;
@@ -26,7 +27,7 @@ function requireLogin() {
   window.location.href = "./logon.html";
 }
 
-// Resize frame -> base64 JPEG
+// Resize frame -> base64 JPEG (dataURL)
 function captureFrameBase64(video, maxW = 420, quality = 0.55) {
   const vw = video.videoWidth || 640;
   const vh = video.videoHeight || 480;
@@ -42,21 +43,94 @@ function captureFrameBase64(video, maxW = 420, quality = 0.55) {
   const ctx = canvas.getContext("2d");
   ctx.drawImage(video, 0, 0, cw, ch);
 
-  // data:image/jpeg;base64,...
   return canvas.toDataURL("image/jpeg", quality);
 }
 
+function stopLoop() {
+  if (timer) clearInterval(timer);
+  timer = null;
+  busy = false;
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+  }
+  if (videoEl) videoEl.srcObject = null;
+}
+
+async function postRecognize(imageBase64) {
+  const token = getToken();
+  if (!token) throw new Error("Missing token");
+
+  const lockerId = sessionStorage.getItem("locker_to_open") || null;
+
+  const res = await fetch(`${BACKEND}/raspi/recognize-remote`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ imageBase64, lockerId }),
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function startLoop() {
+  stopLoop();
+
+  timer = setInterval(async () => {
+    if (!stream || !videoEl) return;
+    if (busy) return;
+
+    try {
+      busy = true;
+
+      if ((videoEl.videoWidth || 0) < 10) return;
+
+      const frame64 = captureFrameBase64(videoEl, 420, 0.55);
+      const data = await postRecognize(frame64);
+
+      if (data?.success || data?.matched) {
+        setStatus("✅ Nhận diện thành công! Đang mở tủ...");
+
+        const lockerId =
+          data?.lockerId || sessionStorage.getItem("locker_to_open");
+
+        if (lockerId && typeof window.openLockerSuccess === "function") {
+          await window.openLockerSuccess(lockerId);
+          return;
+        }
+
+        window.location.href = "./index.html";
+        return;
+      }
+
+      setStatus("❌ Chưa khớp — thử lại...");
+    } catch (e) {
+      console.error("Recognize error:", e.message);
+      setStatus("⚠️ Nhận diện lỗi — thử lại...");
+    } finally {
+      busy = false;
+    }
+  }, 1500);
+}
+
 async function startCamera() {
+  // ✅ luôn lấy lại element để không bị null
+  videoEl = document.getElementById("cameraPreview");
+
   if (!videoEl) {
     alert("❌ Không tìm thấy thẻ video (#cameraPreview).");
     return;
   }
 
   // stop old
-  if (stream) {
-    stream.getTracks().forEach((t) => t.stop());
-    stream = null;
-  }
+  stopCamera();
 
   setStatus("📷 Đang mở camera...");
 
@@ -85,103 +159,18 @@ async function startCamera() {
   }
 }
 
-function stopLoop() {
-  if (timer) clearInterval(timer);
-  timer = null;
-  busy = false;
-}
-
-function stopCamera() {
-  if (stream) {
-    stream.getTracks().forEach((t) => t.stop());
-    stream = null;
-  }
-  if (videoEl) videoEl.srcObject = null;
-}
-
 async function switchCamera() {
   usingFront = !usingFront;
   await startCamera();
 }
 
-async function postRecognizeFromVideo(videoEl) {
-  const token = sessionStorage.getItem("token");
-  if (!token) throw new Error("Missing token");
-
-  // capture -> dataURL base64 (đã nén)
-  const canvas = document.createElement("canvas");
-  const vw = videoEl.videoWidth || 640;
-  const vh = videoEl.videoHeight || 480;
-
-  const maxW = 480;
-  const scale = Math.min(1, maxW / vw);
-
-  canvas.width = Math.round(vw * scale);
-  canvas.height = Math.round(vh * scale);
-
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-
-  const imageBase64 = canvas.toDataURL("image/jpeg", 0.6);
-
-  const lockerId = sessionStorage.getItem("locker_to_open") || null;
-
-  const res = await fetch(
-    "https://f-locker-backend.onrender.com/raspi/recognize-remote",
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ imageBase64, lockerId }),
-    }
-  );
-
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data?.error || `HTTP ${res.status}`);
-  return data;
-}
-
-function startLoop() {
-  stopLoop();
-
-  timer = setInterval(async () => {
-    if (!stream || !videoEl) return;
-    if (busy) return;
-
-    try {
-      busy = true;
-
-      if ((videoEl.videoWidth || 0) < 10) return;
-
-      const frame64 = captureFrameBase64(videoEl, 420, 0.55);
-      const data = await postRecognize(frame64);
-
-      if (data?.success || data?.matched) {
-        setStatus("✅ Nhận diện thành công! Đang mở tủ...");
-
-        const lockerId =
-          data?.lockerId || sessionStorage.getItem("locker_to_open");
-        if (lockerId && typeof window.openLockerSuccess === "function") {
-          await window.openLockerSuccess(lockerId);
-          return;
-        }
-        window.location.href = "./index.html";
-        return;
-      }
-
-      setStatus("❌ Chưa khớp — thử lại...");
-    } catch (e) {
-      console.error("Recognize error:", e.message);
-      setStatus("⚠️ Nhận diện lỗi — thử lại...");
-    } finally {
-      busy = false;
-    }
-  }, 1500);
-}
-
 document.addEventListener("DOMContentLoaded", () => {
+  // ✅ gán elements sau khi DOM ready
+  videoEl = document.getElementById("cameraPreview");
+  statusEl = document.getElementById("status");
+  btnStartCam = document.getElementById("btnStartCam");
+  btnSwitchCam = document.getElementById("btnSwitchCam");
+
   const token = getToken();
   const user = sessionStorage.getItem("user");
   if (!token || !user) {
@@ -189,8 +178,8 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  if (btnStartCam) btnStartCam.addEventListener("click", startCamera);
-  if (btnSwitchCam) btnSwitchCam.addEventListener("click", switchCamera);
+  btnStartCam?.addEventListener("click", startCamera);
+  btnSwitchCam?.addEventListener("click", switchCamera);
 
   // auto start
   startCamera();
