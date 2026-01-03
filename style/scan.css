@@ -100,3 +100,74 @@ body {
   color: #ccc;
   margin-bottom: 8px;
 }
+/* ===== Oval camera guide (overlay) ===== */
+
+.camera-frame {
+  position: relative;
+  display: inline-block;
+  width: min(90vw, 760px);
+}
+
+.camera-frame img,
+.camera-frame video {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Làm tối bên ngoài oval */
+.oval-mask {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+
+  /* mask: trong suốt ở giữa (oval), tối ở ngoài */
+  -webkit-mask: radial-gradient(
+    ellipse 36% 48% at 50% 45%,
+    transparent 0 99%,
+    #000 100%
+  );
+  mask: radial-gradient(
+    ellipse 36% 48% at 50% 45%,
+    transparent 0 99%,
+    #000 100%
+  );
+
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 12px; /* khớp style hiện tại */
+}
+
+/* Viền oval hướng dẫn */
+.oval-border {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  height: 86%;
+  border: 2px solid rgba(26, 115, 232, 0.95);
+  border-radius: 999px;
+  pointer-events: none;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+/* Mobile: oval nhỏ lại để vừa khung */
+@media (max-width: 480px) {
+  .oval-border {
+    width: 78%;
+    height: 88%;
+  }
+
+  .oval-mask {
+    -webkit-mask: radial-gradient(
+      ellipse 38% 50% at 50% 45%,
+      transparent 0 99%,
+      #000 100%
+    );
+    mask: radial-gradient(
+      ellipse 38% 50% at 50% 45%,
+      transparent 0 99%,
+      #000 100%
+    );
+  }
+}
