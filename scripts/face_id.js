@@ -1,9 +1,8 @@
-// scripts/face_id.js (FIXED + COMPLETE)
-// - Works with your face_id.html (img#cameraPreview, .take-btn, #status)
+// scripts/face_id.js (FINAL)
 // - Uses JWT Authorization
-// - Remote (laptop) mode: captures 5 frames -> POST /raspi/capture-remote-batch
-// - Raspi mode: uses MJPEG stream if you are on Raspi/Ngrok, and POST /raspi/capture-batch (optional)
-// NOTE: Backend must implement POST /raspi/capture-remote-batch (as discussed)
+// - Remote (laptop) mode: capture 5 oval-cropped frames -> POST /raspi/capture-remote-batch
+// - Raspi mode: show MJPEG preview (optional) + POST /raspi/capture-batch (optional)
+// - Saves "done" to localStorage per user
 
 import { API_BASE } from "../api/api.js";
 
@@ -20,17 +19,8 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   const BRIDGE_SERVER = `${API_BASE}/raspi`;
-
-  // Nếu bạn chạy Raspi qua ngrok thì để đúng domain của bạn
   const RASPI_NGROK = "https://adelaida-gymnogynous-gnostically.ngrok-free.dev";
-
-  // Số ảnh cần chụp để train
   const MAX_CAPTURES = 5;
-
-  // Mỗi lần bấm nút sẽ chụp trọn bộ 5 ảnh (batch) rồi train 1 lần
-  // => hoàn thành luôn 5/5 sau 1 lần bấm (đúng ý UI “Chụp (0/5)” nếu bạn muốn 5 lần batch thì đổi logic)
-  // Ở đây mình làm theo chuẩn: 1 batch = đủ 5 ảnh = DONE.
-  const ONE_CLICK_FINISH = true;
 
   let mediaStream = null;
   let isRasPiMode = false;
@@ -65,27 +55,10 @@ document.addEventListener("DOMContentLoaded", () => {
     takeBtn.disabled = disabled;
   }
 
-  function stopLaptopCamera() {
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((t) => t.stop());
-      mediaStream = null;
-    }
-  }
-
-  function cleanupPreview() {
-    // Giữ đúng design: dùng lại đúng ID #cameraPreview nếu có
-    // Xóa preview cũ nếu nó là video do mình tạo
-    const oldVideo = document.querySelector("#laptopCamera");
-    if (oldVideo) oldVideo.remove();
-
-    // img#cameraPreview có sẵn trong HTML, không xóa
-  }
-
   function detectMode() {
     const host = window.location.hostname;
     const href = window.location.href;
 
-    // Nếu chạy ngay trên Raspi hoặc ngrok -> Raspi mode
     if (
       href.startsWith(RASPI_NGROK) ||
       host === "localhost" ||
@@ -93,26 +66,157 @@ document.addEventListener("DOMContentLoaded", () => {
     ) {
       return true;
     }
-
-    // Nếu bạn truy cập bằng IP LAN 192.168.* trên Raspi
     if (/^192\.168\./.test(host)) return true;
 
     return false;
   }
 
+  function stopLaptopCamera() {
+    if (mediaStream) {
+      mediaStream.getTracks().forEach((t) => t.stop());
+      mediaStream = null;
+    }
+    const videoEl = document.querySelector("#laptopCamera");
+    if (videoEl) videoEl.srcObject = null;
+  }
+
+  // ====== Oval capture helper (clamped) ======
+  function captureOvalFromVideo(videoEl, opts = {}) {
+    const {
+      // MUST match your CSS oval in 4:3 fixed frame:
+      cx = 0.5,
+      cy = 0.48,
+      ow = 0.66,
+      oh = 0.82,
+
+      outW = 360,
+      outH = 480,
+
+      jpeg = true,
+      quality = 0.9,
+    } = opts;
+
+    const vw = videoEl.videoWidth || 640;
+    const vh = videoEl.videoHeight || 480;
+
+    const boxW = vw * ow;
+    const boxH = vh * oh;
+
+    let boxX = vw * cx - boxW / 2;
+    let boxY = vh * cy - boxH / 2;
+
+    // clamp to bounds (avoid negative crop)
+    boxX = Math.max(0, Math.min(boxX, vw - boxW));
+    boxY = Math.max(0, Math.min(boxY, vh - boxH));
+
+    const c = document.createElement("canvas");
+    c.width = outW;
+    c.height = outH;
+    const ctx = c.getContext("2d");
+
+    if (jpeg) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(0, 0, outW, outH);
+    }
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.ellipse(
+      outW / 2,
+      outH / 2,
+      outW * 0.5 * 0.98,
+      outH * 0.5 * 0.98,
+      0,
+      0,
+      Math.PI * 2
+    );
+    ctx.closePath();
+    ctx.clip();
+
+    ctx.drawImage(videoEl, boxX, boxY, boxW, boxH, 0, 0, outW, outH);
+    ctx.restore();
+
+    return jpeg ? c.toDataURL("image/jpeg", quality) : c.toDataURL("image/png");
+  }
+
+  async function captureFramesFromVideo(
+    videoEl,
+    count = MAX_CAPTURES,
+    delayMs = 200
+  ) {
+    const images = [];
+
+    for (let i = 0; i < count; i++) {
+      // wait until video has real dimensions
+      if ((videoEl.videoWidth || 0) < 10) {
+        await new Promise((r) => setTimeout(r, 120));
+        i--;
+        continue;
+      }
+
+      const dataUrl = captureOvalFromVideo(videoEl, {
+        cx: 0.5,
+        cy: 0.48,
+        ow: 0.66,
+        oh: 0.82,
+        outW: 360,
+        outH: 480,
+        jpeg: true,
+        quality: 0.9,
+      });
+
+      images.push(dataUrl.split(",")[1]); // base64 only
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+
+    return images;
+  }
+
+  async function postJson(endpoint, body) {
+    const token = getToken();
+    if (!token) throw new Error("Missing token. Please login again.");
+
+    const res = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body || {}),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+    }
+    return data;
+  }
+
   async function startLaptopCamera() {
-    cleanupPreview();
+    // Prefer using an existing <video id="laptopCamera"> if you added it in HTML.
+    // If not exist, create it once.
+    let video = document.querySelector("#laptopCamera");
+    const img = document.querySelector("img#cameraPreview");
 
-    const video = document.createElement("video");
-    video.id = "laptopCamera";
-    video.autoplay = true;
-    video.playsInline = true;
-    video.muted = true;
-    video.style.maxWidth = "90%";
-    video.style.borderRadius = "10px";
-    video.style.border = "2px solid #1a73e8";
+    if (!video) {
+      video = document.createElement("video");
+      video.id = "laptopCamera";
+      video.autoplay = true;
+      video.playsInline = true;
+      video.muted = true;
 
-    cameraWrapper.insertBefore(video, takeBtn);
+      // If you already use .camera-frame, just append inside it.
+      const frame = document.querySelector(".camera-frame") || cameraWrapper;
+      frame.appendChild(video);
+    }
+
+    // Hide raspi img to avoid showing alt text
+    if (img) {
+      img.style.display = "none";
+      img.removeAttribute("src");
+    }
+
+    video.style.display = "block";
 
     try {
       mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -122,7 +226,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       video.srcObject = mediaStream;
       await video.play();
-
       setStatus("🎥 Live stream from Laptop Camera", "#00ffff");
     } catch (err) {
       console.error("Laptop camera error:", err);
@@ -134,86 +237,26 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function startRaspiStreamPreview() {
-    cleanupPreview();
-
     const img = document.querySelector("img#cameraPreview");
+    const video = document.querySelector("#laptopCamera");
+
+    // Hide laptop video if exists
+    if (video) video.style.display = "none";
+    stopLaptopCamera();
+
     if (!img) {
-      console.error("Missing img#cameraPreview in HTML");
       setStatus("❌ Missing camera preview element.", "#ff3333");
       return;
     }
 
-    // ✅ SỬA LỖI: bạn không được set src về 127.0.0.1 khi đang remote.
-    // Nếu đang chạy Raspi trực tiếp (localhost / LAN) => dùng origin hiện tại
-    // Nếu đang qua ngrok => dùng ngrok domain
     const base = window.location.href.startsWith(RASPI_NGROK)
       ? RASPI_NGROK
       : window.location.origin;
 
-    // MJPEG stream endpoint trên Raspi (bạn đang dùng /video_feed)
     img.src = `${base}/video_feed`;
     img.style.display = "block";
-    img.style.maxWidth = "90%";
-    img.style.borderRadius = "10px";
-    img.style.border = "2px solid #1a73e8";
 
     setStatus("🎥 Live stream from Raspberry Pi", "#00ffff");
-  }
-
-  function captureFramesFromVideo(
-    videoEl,
-    count = MAX_CAPTURES,
-    delayMs = 200
-  ) {
-    return new Promise(async (resolve) => {
-      const images = [];
-      for (let i = 0; i < count; i++) {
-        const vw = videoEl.videoWidth || 640;
-        const vh = videoEl.videoHeight || 480;
-
-        const canvas = document.createElement("canvas");
-        canvas.width = vw;
-        canvas.height = vh;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(videoEl, 0, 0, vw, vh);
-
-        // backend/Raspi thường nhận base64 không có prefix
-        const dataUrl = captureOvalFromVideo(videoEl, {
-          outW: 360,
-          outH: 480,
-          jpeg: true,
-          quality: 0.9,
-        });
-
-        images.push(dataUrl.split(",")[1]); // gửi base64 thuần như bạn đang làm
-
-        images.push(b64);
-
-        await new Promise((r) => setTimeout(r, delayMs));
-      }
-      resolve(images);
-    });
-  }
-
-  async function postJson(endpoint, body) {
-    const token = getToken();
-    if (!token) throw new Error("Missing token. Please login again.");
-
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`, // ✅ quan trọng
-      },
-      body: JSON.stringify(body || {}),
-    });
-
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) {
-      const msg = data?.error || data?.message || `HTTP ${res.status}`;
-      throw new Error(msg);
-    }
-    return data;
   }
 
   function init() {
@@ -226,8 +269,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     const username = normalizeName(user?.name || user?.username);
-
-    // lưu trạng thái hoàn thành theo user
     const doneKey = `face_done_${username}`;
     done = localStorage.getItem(doneKey) === "1";
 
@@ -239,7 +280,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // UI init
     setButton(`📸 Chụp (0/${MAX_CAPTURES})`, false);
     setStatus("🔄 Checking camera mode...", "#00ffff");
 
@@ -251,7 +291,6 @@ document.addEventListener("DOMContentLoaded", () => {
       startLaptopCamera();
     }
 
-    // click handler
     takeBtn.addEventListener("click", async () => {
       if (done) return;
 
@@ -272,7 +311,6 @@ document.addEventListener("DOMContentLoaded", () => {
           "#ffaa00"
         );
 
-        // lockerId nếu bạn muốn gắn training theo locker
         const lockerId =
           sessionStorage.getItem("locker_to_open") ||
           sessionStorage.getItem("selectedLocker") ||
@@ -280,7 +318,6 @@ document.addEventListener("DOMContentLoaded", () => {
           null;
 
         if (!isRasPiMode) {
-          // laptop mode: chụp từ webcam -> gửi backend
           if (!mediaStream) throw new Error("Laptop camera is not ready.");
 
           const videoEl = document.querySelector("#laptopCamera");
@@ -292,33 +329,27 @@ document.addEventListener("DOMContentLoaded", () => {
             200
           );
 
-          // ✅ SỬA: endpoint đúng là /raspi/capture-remote-batch (POST)
           const endpoint = `${BRIDGE_SERVER}/capture-remote-batch`;
-
-          // body theo kiểu bạn đang dùng
           const body = {
             name: username2,
             images_data: images,
-            ...(lockerId ? { lockerId } : {}),
             count: MAX_CAPTURES,
+            ...(lockerId ? { lockerId } : {}),
           };
 
           const data = await postJson(endpoint, body);
 
-          if (data?.success !== false) {
-            // ✅ DONE
-            done = true;
-            localStorage.setItem(`face_done_${username2}`, "1");
-            setStatus("✅ Train thành công! Khuôn mặt đã được lưu.", "#00ff66");
-            setButton("✅ Hoàn thành (Đã Train)", true);
-          } else {
+          if (data?.success === false) {
             throw new Error(data?.error || "Failed to capture/train");
           }
-        } else {
-          // raspi mode: để endpoint này nếu Raspi/Backend bạn có
-          // Nếu bạn chưa làm /capture-batch thì có thể đổi sang /capture-remote-batch luôn.
-          const endpoint = `${BRIDGE_SERVER}/capture-batch`;
 
+          done = true;
+          localStorage.setItem(`face_done_${username2}`, "1");
+          setStatus("✅ Train thành công! Khuôn mặt đã được lưu.", "#00ff66");
+          setButton("✅ Hoàn thành (Đã Train)", true);
+        } else {
+          // Raspi mode (optional)
+          const endpoint = `${BRIDGE_SERVER}/capture-batch`;
           const body = {
             name: username2,
             count: MAX_CAPTURES,
@@ -327,21 +358,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
           const data = await postJson(endpoint, body);
 
-          if (data?.success !== false) {
-            done = true;
-            localStorage.setItem(`face_done_${username2}`, "1");
-            setStatus("✅ Train thành công! Khuôn mặt đã được lưu.", "#00ff66");
-            setButton("✅ Hoàn thành (Đã Train)", true);
-          } else {
+          if (data?.success === false) {
             throw new Error(data?.error || "Failed to capture/train");
           }
-        }
 
-        // nếu bạn muốn: tự chuyển qua open.html sau khi train
-        // window.location.href = "./open.html";
+          done = true;
+          localStorage.setItem(`face_done_${username2}`, "1");
+          setStatus("✅ Train thành công! Khuôn mặt đã được lưu.", "#00ff66");
+          setButton("✅ Hoàn thành (Đã Train)", true);
+        }
       } catch (err) {
         console.error("Capture/train error:", err);
-        setStatus("❌ " + err.message, "#ff3333");
+        setStatus("❌ " + (err?.message || "Capture failed"), "#ff3333");
         setButton(`📸 Chụp (0/${MAX_CAPTURES})`, false);
       }
     });
@@ -353,63 +381,3 @@ document.addEventListener("DOMContentLoaded", () => {
 
   init();
 });
-function captureOvalFromVideo(videoEl, opts = {}) {
-  const {
-    // phải khớp với CSS oval: top=46%, width=68%, height=86%
-    cx = 0.5,
-    cy = 0.46,
-    ow = 0.68,
-    oh = 0.86,
-    outW = 360, // ảnh output nhỏ vừa đủ train/recognize
-    outH = 480,
-    jpeg = true, // true => JPEG (nền đen), false => PNG (trong suốt ngoài oval)
-    quality = 0.9,
-  } = opts;
-
-  const vw = videoEl.videoWidth || 640;
-  const vh = videoEl.videoHeight || 480;
-
-  // Oval bounding box trên frame gốc
-  const boxW = vw * ow;
-  const boxH = vh * oh;
-  const boxX = vw * cx - boxW / 2;
-  const boxY = vh * cy - boxH / 2;
-
-  // Canvas output
-  const c = document.createElement("canvas");
-  c.width = outW;
-  c.height = outH;
-  const ctx = c.getContext("2d");
-
-  // Nếu JPEG: fill nền đen để không bị alpha mất dữ liệu
-  if (jpeg) {
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, outW, outH);
-  }
-
-  // Clip ellipse (oval)
-  ctx.save();
-  ctx.beginPath();
-  ctx.ellipse(
-    outW / 2,
-    outH / 2,
-    outW * 0.5 * 0.98,
-    outH * 0.5 * 0.98,
-    0,
-    0,
-    Math.PI * 2
-  );
-  ctx.closePath();
-  ctx.clip();
-
-  // Draw cropped region into output canvas
-  ctx.drawImage(videoEl, boxX, boxY, boxW, boxH, 0, 0, outW, outH);
-
-  ctx.restore();
-
-  // Export
-  if (jpeg) {
-    return c.toDataURL("image/jpeg", quality); // "data:image/jpeg;base64,..."
-  }
-  return c.toDataURL("image/png"); // "data:image/png;base64,..."
-}
