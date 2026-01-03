@@ -1,11 +1,10 @@
-//history.js
+// scripts/history.js (FIXED - auth + correct endpoint + no duplicate render)
 import { API_BASE } from "../api/api.js";
 
-const API = API_BASE;
-
-// ====== AUTH CHECK ======
 const userRaw = sessionStorage.getItem("user");
-if (!userRaw) {
+const token = sessionStorage.getItem("token");
+
+if (!userRaw || !token) {
   alert("Bạn chưa đăng nhập.");
   window.location.href = "./logon.html";
 }
@@ -17,34 +16,40 @@ const historyList = document.getElementById("historyList");
 const lockerTitle = document.getElementById("historyLockerName");
 const backBtn = document.getElementById("back-to-detail-btn");
 
-// ====== LOAD HISTORY ======
 async function loadHistory() {
   try {
-    const res = await fetch(`${API}/history/${userId}`);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    // ✅ đúng route backend: /auth/history/:userId
+    const res = await fetch(`${API_BASE}/auth/history/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
 
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok)
+      throw new Error(data?.error || data?.message || `HTTP ${res.status}`);
+
     if (!data.success || !Array.isArray(data.history)) {
-      throw new Error(data.error || "Invalid history data");
+      throw new Error(data?.error || "Invalid history data");
     }
 
-    // ===== UI =====
     lockerTitle.textContent = user.registeredLocker
       ? `Locker ${user.registeredLocker}`
       : "Locker (Chưa đăng ký)";
 
     historyList.innerHTML = "";
 
+    // ✅ chỉ render 1 lần (file cũ render 2 lần bị trùng)
     data.history.forEach((h) => {
       const li = document.createElement("li");
       li.className = "history-item";
 
-      const action = h.action.toUpperCase();
+      const action = String(h.action || "").toUpperCase();
 
       let color = "#aaa";
       let label = action;
 
-      if (action.includes("OPEN")) {
+      if (action.includes("OPEN") || action.includes("UNLOCK")) {
         color = "#22c55e";
         label = "OPEN";
       } else if (action.includes("LOCK") || action.includes("CLOSE")) {
@@ -53,33 +58,23 @@ async function loadHistory() {
       }
 
       li.innerHTML = `
-    <div class="history-row">
-      <span class="history-action" style="color:${color};font-weight:600">
-        ● ${label}
-      </span>
-      <span class="history-time">
-        ${new Date(h.timestamp).toLocaleString()}
-      </span>
-    </div>
-  `;
-
-      historyList.appendChild(li);
-    });
-
-    data.history.forEach((h) => {
-      const li = document.createElement("li");
-      li.className = "history-item";
-
-      li.innerHTML = `
-        <div>
-          <strong>${h.action}</strong>
-          <span style="color:#888;font-size:13px">
+        <div class="history-row">
+          <span class="history-action" style="color:${color};font-weight:600">
+            ● ${label}
+          </span>
+          <span class="history-time">
             ${new Date(h.timestamp).toLocaleString()}
           </span>
         </div>
       `;
+
       historyList.appendChild(li);
     });
+
+    if (data.history.length === 0) {
+      historyList.innerHTML =
+        "<li style='color:#aaa;text-align:center'>Chưa có lịch sử</li>";
+    }
   } catch (err) {
     console.error("❌ Load history error:", err);
     historyList.innerHTML =
@@ -87,10 +82,8 @@ async function loadHistory() {
   }
 }
 
-// ====== BACK BUTTON ======
-backBtn.addEventListener("click", () => {
+backBtn?.addEventListener("click", () => {
   window.location.href = "./open.html";
 });
 
-// ====== INIT ======
 document.addEventListener("DOMContentLoaded", loadHistory);
