@@ -1,0 +1,184 @@
+<!-- admin.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0,viewport-fit=cover"
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Epilogue:ital,wght@0,100..900;1,100..900&family=Montserrat:ital,wght@0,100..900;1,100..900&family=Rubik+Mono+One&family=Rubik:ital,wght@0,300..900;1,300..900&display=swap"
+      rel="stylesheet"
+    />
+
+    <title>Admin - User Manager | F-LOCK</title>
+
+    <!-- giữ đúng style hệ thống -->
+    <link rel="stylesheet" href="style/main_header.css" />
+    <link rel="stylesheet" href="style/main_footer.css" />
+    <link rel="stylesheet" href="style/logon.css" />
+    <link rel="stylesheet" href="style/admin.css" />
+    <link rel="stylesheet" href="./style/mobile.css" />
+  </head>
+
+  <body>
+    <section class="o">
+      <div class="menu">
+        <h2>F-LOCK</h2>
+        <a href="./menu.html">
+          <img
+            src="./design/SOURCE_IMAGE/Menu.png"
+            alt="menu"
+            class="icon_menu"
+          />
+        </a>
+      </div>
+      <hr />
+    </section>
+
+    <div class="header">
+      <p id="row1">ADMIN PANEL</p>
+      <h1 id="adminTitle">User Management</h1>
+      <p id="row3">View, edit, and delete user accounts.</p>
+    </div>
+
+    <div
+      class="register-container login-container admin-shell"
+      style="max-width: 1100px"
+    >
+      <div class="right-side" style="padding: 18px">
+        <div class="admin-topbar">
+          <input
+            id="searchInput"
+            class="admin-search"
+            type="text"
+            placeholder="Search by name / username / email / phone..."
+            autocomplete="off"
+          />
+          <button id="refreshBtn" class="btn admin-btn">Refresh</button>
+          <button id="logoutBtn" class="btn admin-btn btn-danger">
+            Logout
+          </button>
+        </div>
+
+        <div id="status" class="admin-status">Loading...</div>
+
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>User</th>
+                <th>Email</th>
+                <th>Phone</th>
+                <th>Created</th>
+                <th>Locker</th>
+                <th style="width: 240px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="usersTbody">
+              <tr>
+                <td
+                  colspan="6"
+                  style="text-align: center; color: #aaa; padding: 18px"
+                >
+                  Loading users...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Edit Modal -->
+        <div id="editModal" class="admin-modal hidden">
+          <div class="admin-modal-card">
+            <div class="admin-modal-head">
+              <h3>Edit User</h3>
+              <button id="closeModalBtn" class="admin-x">✕</button>
+            </div>
+
+            <div class="admin-form">
+              <input type="hidden" id="editUserId" />
+
+              <label class="admin-label">Name</label>
+              <input id="editName" class="admin-input" type="text" />
+
+              <label class="admin-label">Username</label>
+              <input id="editUsername" class="admin-input" type="text" />
+
+              <label class="admin-label">Email</label>
+              <input id="editEmail" class="admin-input" type="email" />
+
+              <label class="admin-label">Phone</label>
+              <input id="editPhone" class="admin-input" type="text" />
+
+              <div class="admin-actions">
+                <button id="saveBtn" class="btn admin-btn">Save</button>
+                <button id="cancelBtn" class="btn admin-btn btn-ghost">
+                  Cancel
+                </button>
+              </div>
+
+              <div
+                id="modalStatus"
+                class="admin-status"
+                style="margin-top: 12px"
+              ></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./scripts/auth_protect.js"></script>
+    <script type="module" src="./scripts/admin.js"></script>
+  </body>
+
+  <footer class="footer">
+    <div class="footer-content">
+      <div class="footer-left">
+        <h2 id="end_F">F-LOCK</h2>
+        <p>
+          Tủ khóa thông minh của chúng tôi mang đến sự an toàn và tiện lợi. Hãy
+          biến việc lưu trữ hằng ngày thành một trải nghiệm thông minh và bảo
+          mật hơn!
+        </p>
+
+        <nav class="footer-nav">
+          <a href="./index.html">Home</a>
+          <a href="./guild.html">User Guide</a>
+          <a href="./open.html">Open Locker</a>
+          <a href="./about_us.html">About</a>
+          <a href="./face_res.html">ID</a>
+          <a
+            id="adminNav"
+            href="./admin.html"
+            class="admin-nav-link"
+            style="display: none"
+          >
+            Admin
+          </a>
+        </nav>
+      </div>
+
+      <div class="footer-right">
+        <p>
+          Are you ready to unlock a smarter and more secure experience with our
+          device?
+        </p>
+        <p>
+          Drop us a line at <br />
+          <a href="mailto:aicungvay321@gmail.com" class="email-link">
+            aicungvay321@gmail.com
+          </a>
+        </p>
+      </div>
+    </div>
+
+    <hr class="footer-line" />
+    <p class="copyright">© 2025 F-LOCK. All rights reserved.</p>
+  </footer>
+</html>

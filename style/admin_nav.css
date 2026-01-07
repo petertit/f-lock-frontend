@@ -1,0 +1,19 @@
+/* style/admin_nav.css */
+.admin-nav-link {
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 170, 0, 0.35);
+  background: rgba(255, 170, 0, 0.1);
+  color: #ffd27a;
+  text-decoration: none;
+  font-weight: 700;
+  transition: 0.2s ease;
+}
+
+.admin-nav-link:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 170, 0, 0.16);
+}
