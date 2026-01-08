@@ -49,17 +49,6 @@
     <!-- scripts -->
     <script type="module" src="./scripts/open.js"></script>
     <script type="module" src="./scripts/pass_lock_login.js"></script>
-    <script type="module">
-      import { lockOnExitBestEffort } from "./scripts/auto_lock.js";
-
-      // Khi rời trang (đóng tab, chuyển trang, refresh)
-      window.addEventListener("pagehide", () => lockOnExitBestEffort());
-
-      // Khi chuyển sang background (mobile/desktop)
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") lockOnExitBestEffort();
-      });
-    </script>
   </body>
   <footer class="footer">
     <div class="footer-content">

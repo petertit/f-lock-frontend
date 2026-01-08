@@ -129,17 +129,6 @@
     <!-- ... script ... -->
 
     <script src="./scripts/register.js"></script>
-    <script type="module">
-      import { lockOnExitBestEffort } from "./scripts/auto_lock.js";
-
-      // Khi rời trang (đóng tab, chuyển trang, refresh)
-      window.addEventListener("pagehide", () => lockOnExitBestEffort());
-
-      // Khi chuyển sang background (mobile/desktop)
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") lockOnExitBestEffort();
-      });
-    </script>
   </body>
   <!-- footer -->
   <footer class="footer">

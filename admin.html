@@ -132,31 +132,9 @@
         </div>
       </div>
     </div>
-    <!-- script -->
+
     <script src="./scripts/auth_protect.js"></script>
     <script type="module" src="./scripts/admin.js"></script>
-    <script type="module">
-      import { lockOnExitBestEffort } from "./scripts/auto_lock.js";
-
-      // Khi rời trang (đóng tab, chuyển trang, refresh)
-      window.addEventListener("pagehide", () => lockOnExitBestEffort());
-
-      // Khi chuyển sang background (mobile/desktop)
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "hidden") lockOnExitBestEffort();
-      });
-    </script>
-    <script type="module">
-      import { logoutWithAutoLock } from "./scripts/auto_lock.js";
-
-      const btn = document.getElementById("logoutBtn"); // id nút logout của bạn
-      if (btn) {
-        btn.addEventListener("click", (e) => {
-          e.preventDefault();
-          logoutWithAutoLock();
-        });
-      }
-    </script>
   </body>
 
   <footer class="footer">
