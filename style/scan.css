@@ -192,3 +192,20 @@ body {
     height: 86%;
   }
 }
+#btnStartCam,
+#btnSwitchCam {
+  background: #5319b0;
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 9px 25px;
+  font-size: 1.2rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s;
+}
+
+#btnStartCam :hover,
+#btnSwitchCam-btn:hover {
+  background: #c80633;
+}

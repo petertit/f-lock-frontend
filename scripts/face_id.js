@@ -217,7 +217,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     video.srcObject = mediaStream;
     await video.play();
-    setStatus("🎥 Live stream from Laptop Camera", "#00ffff");
+    setStatus("🎥 Live stream from Camera", "#00ffff");
   }
 
   function startRaspiStreamPreview() {
