@@ -1,7 +1,38 @@
-// scripts/admin.js (frontend)
-import { apiFetch, clearAuth } from "./api/http.js"; // nếu bạn để http.js ở root
-// Nếu http.js nằm cùng thư mục scripts thì đổi thành: "./http.js"
+// scripts/admin.js (NO MODULE IMPORT - FIX MIME ERROR)
+const API_BASE = "https://f-locker-backend.onrender.com";
 
+function getToken() {
+  return sessionStorage.getItem("token");
+}
+function clearAuth() {
+  sessionStorage.removeItem("token");
+  sessionStorage.removeItem("user");
+}
+
+async function apiFetch(path, options = {}) {
+  const url = `${API_BASE}${path}`;
+  const token = getToken();
+
+  const headers = new Headers(options.headers || {});
+  if (!headers.has("Content-Type") && options.body) {
+    headers.set("Content-Type", "application/json");
+  }
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const res = await fetch(url, { ...options, headers });
+
+  if (res.status === 401) {
+    clearAuth();
+    if (!location.pathname.toLowerCase().includes("logon")) {
+      location.href = "./logon.html";
+    }
+    throw new Error("Unauthorized (token expired)");
+  }
+
+  return res;
+}
+
+// ===== UI =====
 const els = {
   status: document.getElementById("status"),
   tbody: document.getElementById("usersTbody"),
@@ -29,13 +60,11 @@ function setStatus(msg, color = "#7CFF9B") {
   els.status.textContent = msg;
   els.status.style.color = color;
 }
-
 function setModalStatus(msg, color = "#7CFF9B") {
   if (!els.modalStatus) return;
   els.modalStatus.textContent = msg;
   els.modalStatus.style.color = color;
 }
-
 function openModal() {
   els.modal?.classList.remove("hidden");
 }
@@ -43,15 +72,12 @@ function closeModal() {
   els.modal?.classList.add("hidden");
   setModalStatus("");
 }
-
 function isAdminUser(u) {
   return String(u?.email || "").toLowerCase() === "admin@gmail.com";
 }
-
 function fmtDate(d) {
   try {
-    const dt = new Date(d);
-    return dt.toLocaleString();
+    return new Date(d).toLocaleString();
   } catch {
     return "";
   }
@@ -204,7 +230,7 @@ async function saveEdit() {
 
     setModalStatus("✅ Saved.", "#7CFF9B");
     await loadUsers();
-    setTimeout(closeModal, 350);
+    setTimeout(closeModal, 250);
   } catch (e) {
     setModalStatus(`❌ Save failed: ${e.message}`, "#ff6b6b");
   }
