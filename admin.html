@@ -17,7 +17,6 @@
 
     <title>Admin - User Manager | F-LOCK</title>
 
-    <!-- giữ đúng style hệ thống -->
     <link rel="stylesheet" href="style/main_header.css" />
     <link rel="stylesheet" href="style/main_footer.css" />
     <link rel="stylesheet" href="style/logon.css" />
@@ -56,7 +55,7 @@
             id="searchInput"
             class="admin-search"
             type="text"
-            placeholder="Search by name / username / email / phone..."
+            placeholder="Search by name / email / phone..."
             autocomplete="off"
           />
           <button id="refreshBtn" class="btn admin-btn">Refresh</button>
@@ -106,14 +105,22 @@
               <label class="admin-label">Name</label>
               <input id="editName" class="admin-input" type="text" />
 
-              <label class="admin-label">Username</label>
-              <input id="editUsername" class="admin-input" type="text" />
+              <!-- ✅ REMOVED Username -->
 
               <label class="admin-label">Email</label>
               <input id="editEmail" class="admin-input" type="email" />
 
               <label class="admin-label">Phone</label>
               <input id="editPhone" class="admin-input" type="text" />
+
+              <!-- ✅ NEW: Locker Code -->
+              <label class="admin-label">Locker Code</label>
+              <input
+                id="editLockerCode"
+                class="admin-input"
+                type="text"
+                placeholder="e.g. 1234"
+              />
 
               <div class="admin-actions">
                 <button id="saveBtn" class="btn admin-btn">Save</button>
