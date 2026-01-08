@@ -1,5 +1,48 @@
-//pass_lock_login.js
+// scripts/pass_lock_login.js
 document.addEventListener("DOMContentLoaded", () => {
+  const BACKEND = "https://f-locker-backend.onrender.com";
+
+  function getToken() {
+    return sessionStorage.getItem("token");
+  }
+
+  // ✅ heartbeat: giữ session locker sống
+  let touchTimer = null;
+
+  async function touchLocker() {
+    const token = getToken();
+    const lockerId = sessionStorage.getItem("locker_to_open");
+    if (!token || !lockerId) return;
+
+    try {
+      await fetch(`${BACKEND}/lockers/touch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ lockerId }),
+      });
+    } catch (_) {}
+  }
+
+  function startTouchLoop() {
+    if (touchTimer) clearInterval(touchTimer);
+    touchTimer = setInterval(touchLocker, 20000);
+    touchLocker();
+  }
+
+  function stopTouchLoop() {
+    if (touchTimer) clearInterval(touchTimer);
+    touchTimer = null;
+  }
+
+  // start touch khi vào trang
+  startTouchLoop();
+
+  // stop touch khi rời trang
+  window.addEventListener("pagehide", stopTouchLoop);
+
   const user = JSON.parse(sessionStorage.getItem("user"));
   if (!user) {
     alert("⚠️ Bạn cần đăng nhập trước khi mở tủ!");
