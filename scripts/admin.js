@@ -1,4 +1,4 @@
-// scripts/admin.js (NO MODULE IMPORT - FIX MIME ERROR)
+// scripts/admin.js (NO MODULE IMPORT - FIX MIME ERROR) + locker badge UI
 const API_BASE = "https://f-locker-backend.onrender.com";
 
 function getToken() {
@@ -83,6 +83,29 @@ function fmtDate(d) {
   }
 }
 
+/**
+ * Create locker badge HTML:
+ * - LOCKED => red outline
+ * - OPEN   => green outline
+ * - EMPTY  => gray outline
+ */
+function lockerBadgeHTML(lockerId, statusRaw) {
+  const status = String(statusRaw || "").toUpperCase();
+  let cls = "empty";
+
+  if (status === "LOCKED") cls = "locked";
+  else if (status === "OPEN") cls = "open";
+  else if (status === "EMPTY") cls = "empty";
+  else cls = "empty";
+
+  // fallback if lockerId null
+  if (!lockerId) return "-";
+
+  return `<span class="locker-badge ${cls}">${lockerId} (${
+    status || "EMPTY"
+  })</span>`;
+}
+
 function render(users) {
   if (!els.tbody) return;
 
@@ -97,11 +120,15 @@ function render(users) {
   els.tbody.innerHTML = users
     .map((u) => {
       const role = isAdminUser(u) ? "ADMIN" : "USER";
-      const lockerText = u?.locker?.lockerId
-        ? `${u.locker.lockerId} (${u.locker.status || ""})`
-        : u.registeredLocker
-        ? `${u.registeredLocker}`
-        : "-";
+
+      // ✅ badge based on locker_states if available
+      let lockerCell = "-";
+      if (u?.locker?.lockerId) {
+        lockerCell = lockerBadgeHTML(u.locker.lockerId, u.locker.status);
+      } else if (u?.registeredLocker) {
+        // nếu backend không trả locker_states, vẫn show registeredLocker (gray)
+        lockerCell = lockerBadgeHTML(String(u.registeredLocker), "EMPTY");
+      }
 
       return `
       <tr>
@@ -118,7 +145,7 @@ function render(users) {
         <td style="word-break:break-all">${u.email || "-"}</td>
         <td>${u.phone || "-"}</td>
         <td>${fmtDate(u.createdAt)}</td>
-        <td>${lockerText}</td>
+        <td>${lockerCell}</td>
         <td>
           <button class="btn admin-btn js-edit" data-id="${u._id}">Edit</button>
           <button class="btn admin-btn btn-danger js-delete" data-id="${
