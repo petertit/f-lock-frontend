@@ -32,7 +32,7 @@ async function apiFetch(path, options = {}) {
   return res;
 }
 
-// ===== UI =====
+//UI
 const els = {
   status: document.getElementById("status"),
   tbody: document.getElementById("usersTbody"),
