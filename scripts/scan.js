@@ -7,12 +7,10 @@ let usingFront = true;
 let busy = false;
 let timer = null;
 
-// 🔒 heartbeat timer
 let touchTimer = null;
 
-// elements
-let videoEl = null; // #userCamera
-let raspiImgEl = null; // #raspiCamera (optional)
+let videoEl = null;
+let raspiImgEl = null;
 let statusEl = null;
 let btnStartCam = null;
 let btnSwitchCam = null;
@@ -36,9 +34,6 @@ function requireLogin() {
   window.location.href = "./logon.html";
 }
 
-/* =========================
-   🔒 HEARTBEAT / TOUCH
-========================= */
 async function touchLocker() {
   const token = getToken();
   const lockerId = getLockerId();
@@ -61,8 +56,8 @@ async function touchLocker() {
 
 function startTouchLoop() {
   stopTouchLoop();
-  touchTimer = setInterval(touchLocker, 20000); // 20s
-  touchLocker(); // touch ngay khi vào trang
+  touchTimer = setInterval(touchLocker, 20000);
+  touchLocker();
 }
 
 function stopTouchLoop() {
@@ -70,10 +65,6 @@ function stopTouchLoop() {
   touchTimer = null;
 }
 
-/**
- * Capture ONLY oval region from a video element.
- * Returns dataURL (data:image/jpeg;base64,...)
- */
 function captureOvalFromVideo(videoEl, opts = {}) {
   const {
     cx = 0.5,
@@ -172,7 +163,7 @@ function startLoop() {
 
         const lockerId = data?.lockerId || getLockerId();
         if (lockerId && typeof window.openLockerSuccess === "function") {
-          stopTouchLoop(); // ❗ dừng heartbeat khi đã mở tủ
+          stopTouchLoop();
           await window.openLockerSuccess(lockerId);
           return;
         }
@@ -255,11 +246,9 @@ document.addEventListener("DOMContentLoaded", () => {
   btnStartCam?.addEventListener("click", startCamera);
   btnSwitchCam?.addEventListener("click", switchCamera);
 
-  // 🚀 START
-  startTouchLoop(); // 🔒 bắt đầu heartbeat
+  startTouchLoop();
   startCamera();
 
-  // Khi rời trang
   window.addEventListener("pagehide", () => {
     stopTouchLoop();
     stopLoop();

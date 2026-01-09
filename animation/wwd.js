@@ -70,6 +70,5 @@ document.addEventListener("DOMContentLoaded", () => {
     if (buttons[key]) updateState(key);
   });
 
-  // default state
   updateState("faceid");
 });

@@ -22,10 +22,9 @@ export async function apiFetch(path, options = {}) {
 
   const res = await fetch(url, { ...options, headers });
 
-  // Auto logout nếu token sai/hết hạn
   if (res.status === 401) {
     clearAuth();
-    // tránh loop nếu đang ở logon
+
     if (!location.pathname.toLowerCase().includes("logon")) {
       location.href = "./logon.html";
     }

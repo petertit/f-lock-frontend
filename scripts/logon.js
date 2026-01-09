@@ -15,16 +15,14 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   function redirectAfterLogin(user) {
-    // ✅ Admin vào trang admin
     if (isAdmin(user)) {
       window.location.href = "./admin.html";
       return;
     }
-    // ✅ User thường (bạn có thể đổi sang ./menu.html hoặc ./open.html tuỳ flow)
+
     window.location.href = "./index.html";
   }
 
-  // ✅ Nếu đã có token + user => redirect theo role
   const token = sessionStorage.getItem("token");
   const user = getUser();
   if (token && user) {
@@ -69,7 +67,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     try {
-      // ✅ Ưu tiên /auth/login, fallback /login
       let result;
       try {
         result = await tryLogin("/auth/login", { email, password });
@@ -84,7 +81,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       const { res, data } = result;
 
-      // ✅ Chuẩn JWT: cần token + user
       const gotUser = data?.user || data?.data?.user || null;
       const gotToken = data?.token || data?.data?.token || null;
 

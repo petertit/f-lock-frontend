@@ -12,7 +12,6 @@ document.addEventListener("DOMContentLoaded", () => {
   const trackStyles = window.getComputedStyle(track);
   const GAP = parseInt(trackStyles.gap) || 0;
 
-  // Clone for infinite loop
   const firstClone = slides[0].cloneNode(true);
   const lastClone = slides[slides.length - 1].cloneNode(true);
   track.appendChild(firstClone);

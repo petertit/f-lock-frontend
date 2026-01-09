@@ -18,7 +18,6 @@ const backBtn = document.getElementById("back-to-detail-btn");
 
 async function loadHistory() {
   try {
-    // ✅ đúng route backend: /auth/history/:userId
     const res = await fetch(`${API_BASE}/auth/history/${userId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -39,7 +38,6 @@ async function loadHistory() {
 
     historyList.innerHTML = "";
 
-    // ✅ chỉ render 1 lần (file cũ render 2 lần bị trùng)
     data.history.forEach((h) => {
       const li = document.createElement("li");
       li.className = "history-item";

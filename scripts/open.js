@@ -244,11 +244,11 @@ function applyStateClass(item, state, isMine) {
   if (isMine) {
     if (state.status === "LOCKED") {
       item.classList.add("status-locked");
-      item.style.border = "2px solid #ffd000"; // vàng
+      item.style.border = "2px solid #ffd000"; 
       item.style.backgroundColor = "rgba(255, 208, 0, 0.18)";
     } else if (state.status === "OPEN") {
       item.classList.add("status-open");
-      item.style.border = "2px solid #00ff66"; // xanh
+      item.style.border = "2px solid #00ff66"; 
       item.style.backgroundColor = "rgba(0, 255, 102, 0.14)";
     } else {
       item.classList.add("status-locked");
@@ -257,7 +257,7 @@ function applyStateClass(item, state, isMine) {
     }
   } else {
     item.classList.add("status-other");
-    item.style.border = "2px solid #ff2a2a"; // đỏ
+    item.style.border = "2px solid #ff2a2a"; 
     item.style.backgroundColor = "rgba(255, 42, 42, 0.16)";
     item.style.opacity = "0.85";
   }
@@ -305,7 +305,7 @@ function addHoverButton(item, opts) {
   });
 }
 
-// ===== UI: update grid =====
+
 function updateGridUI() {
   if (!isOpenPage()) return;
 
@@ -328,9 +328,7 @@ function updateGridUI() {
 
     item.querySelectorAll(".hover-action-btn").forEach((b) => b.remove());
 
-    // ✅ Button logic:
-    // - MY OPEN   => "ĐÓNG TỦ" (đỏ)
-    // - MY LOCKED => "HỦY ĐĂNG KÝ" (cam)
+   
     if (isMine && state.status === "OPEN") {
       addHoverButton(item, {
         text: "ĐÓNG TỦ",
@@ -347,7 +345,7 @@ function updateGridUI() {
       });
     }
 
-    // highlight my locker
+    
     if (myLocker && lockerId === myLocker) {
       item.style.outline = "2px solid rgba(255,255,255,0.25)";
       item.style.outlineOffset = "4px";
@@ -358,7 +356,7 @@ function updateGridUI() {
   });
 }
 
-// ===== CLICK LOGIC =====
+
 function handleLockerClick(lockerId) {
   if (!currentUserId) return requireLogin();
   if (!isValidLocker(lockerId)) return alert("LockerId không hợp lệ.");
@@ -366,7 +364,7 @@ function handleLockerClick(lockerId) {
   const state = lockerStates[lockerId] || { status: "EMPTY", userId: null };
   const myLocker = getMyLockerFromDB() || getMyLockerFromUser();
 
-  // EMPTY => chọn đăng ký/mở (nếu chưa có tủ khác)
+  
   if (state.status === "EMPTY") {
     if (myLocker && myLocker !== lockerId) {
       alert(
@@ -379,25 +377,25 @@ function handleLockerClick(lockerId) {
     return;
   }
 
-  // Tủ của mình => đi face_log để mở lại
+
   if (normalizeId(state.userId) === normalizeId(currentUserId)) {
     sessionStorage.setItem("locker_to_open", lockerId);
     window.location.href = "./face_log.html";
     return;
   }
 
-  // Tủ người khác
+ 
   alert(`Tủ ${lockerId} đang được người khác sử dụng.`);
 }
 window.handleLockerClick = handleLockerClick;
 
-// ===== ACTIONS =====
+
 async function handleCloseLocker(lockerId) {
   if (!currentUserId) return requireLogin();
   if (!confirm(`Bạn có chắc muốn ĐÓNG tủ ${lockerId} không?`)) return;
 
   try {
-    // ✅ best-effort lock vật lý (fail vẫn update DB)
+ 
     try {
       await sendRaspiCommand("lock", lockerId);
     } catch (e) {
@@ -425,7 +423,7 @@ async function handleUnregister(lockerId) {
     return;
 
   try {
-    // ✅ best-effort lock vật lý
+ 
     try {
       await sendRaspiCommand("lock", lockerId);
     } catch (e) {
@@ -447,13 +445,13 @@ async function handleUnregister(lockerId) {
 }
 window.handleUnregister = handleUnregister;
 
-// ===== CALLBACK AFTER FACE/PASS SUCCESS =====
+
 window.openLockerSuccess = async (lockerId) => {
   if (!lockerId || !currentUserId) return;
   if (!isValidLocker(lockerId)) return alert("LockerId không hợp lệ.");
 
   try {
-    // ✅ best-effort unlock vật lý
+   
     try {
       await sendRaspiCommand("unlock", lockerId);
     } catch (e) {
@@ -474,17 +472,17 @@ window.openLockerSuccess = async (lockerId) => {
   }
 };
 
-// ===== INIT =====
+
 document.addEventListener("DOMContentLoaded", async () => {
   try {
-    // open.html grid click
+    
     if (isOpenPage()) {
       const grid = document.querySelector(".grid-container");
       if (grid) {
         grid.addEventListener("click", (e) => {
           const item = e.target.closest(".grid-item");
           if (!item) return;
-          if (e.target.closest("button")) return; // ignore button
+          if (e.target.closest("button")) return; 
           e.preventDefault();
           handleLockerClick(item.dataset.lockerId);
         });
@@ -500,7 +498,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-// polling tự đồng bộ
+
 setInterval(async () => {
   try {
     await fetchLockerStates();

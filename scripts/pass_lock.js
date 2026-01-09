@@ -19,8 +19,6 @@ function getUserId(user) {
 }
 
 async function postUpdate(body, token) {
-  // ưu tiên /update vì routes backend của bạn mount trực tiếp "/update"
-  // nhưng có fallback /auth/update cho trường hợp khác
   const paths = ["/update", "/auth/update"];
 
   let last = null;
@@ -37,7 +35,6 @@ async function postUpdate(body, token) {
 
       const data = await res.json().catch(() => ({}));
 
-      // nếu 404 thì thử path khác
       if (res.status === 404) continue;
 
       return { res, data, path: p };
@@ -67,7 +64,6 @@ document.addEventListener("DOMContentLoaded", () => {
     return;
   }
 
-  // lockerId: tùy open.js bạn set key nào thì mình lấy key đó
   const lockerId =
     sessionStorage.getItem("locker_to_open") ||
     sessionStorage.getItem("selectedLocker") ||
@@ -96,7 +92,6 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
 
-    // payload update theo backend AuthController của bạn
     const payload = {
       id: userId,
       lockerCode,

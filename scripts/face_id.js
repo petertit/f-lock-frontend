@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
   const takeBtn = document.querySelector(".take-btn");
   const cameraWrapper = document.querySelector(".face-scan-wrapper");
   const statusEl = document.querySelector("#status");
-  const imgPreview = document.querySelector("#cameraPreview"); // img trong HTML
+  const imgPreview = document.querySelector("#cameraPreview"); 
 
   if (!takeBtn || !cameraWrapper || !statusEl) {
     console.error("Missing elements: .take-btn / .face-scan-wrapper / #status");
@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", () => {
   let isRasPiMode = false;
   let done = false;
 
-  // ========= helpers =========
+  
   const getToken = () => sessionStorage.getItem("token");
   const getUser = () => {
     try {
@@ -89,7 +89,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let boxX = vw * cx - boxW / 2;
     let boxY = vh * cy - boxH / 2;
 
-    // clamp
+    
     boxX = Math.max(0, Math.min(boxX, vw - boxW));
     boxY = Math.max(0, Math.min(boxY, vh - boxH));
 
@@ -98,7 +98,7 @@ document.addEventListener("DOMContentLoaded", () => {
     c.height = outH;
     const ctx = c.getContext("2d");
 
-    // nền đen ngoài oval để JPEG không bị lỗi alpha
+    
     ctx.fillStyle = "#000";
     ctx.fillRect(0, 0, outW, outH);
 
@@ -124,7 +124,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function captureFramesFromVideo(videoEl, count = MAX_CAPTURES) {
     const images = [];
     for (let i = 0; i < count; i++) {
-      // đợi video có size thật
+    
       if ((videoEl.videoWidth || 0) < 10) {
         await new Promise((r) => setTimeout(r, 120));
         i--;
@@ -132,7 +132,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       const dataUrl = captureOvalFromVideo(videoEl);
-      images.push(dataUrl.split(",")[1]); // base64 only
+      images.push(dataUrl.split(",")[1]);
 
       await new Promise((r) => setTimeout(r, 200));
     }
@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
 
       if (!res.ok) {
-        // show server error detail (cực quan trọng để debug 500)
+        
         throw new Error(
           data?.error || data?.message || text || `HTTP ${res.status}`
         );
@@ -178,7 +178,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       return data;
     } catch (e) {
-      // phân biệt abort timeout
+    
       if (e?.name === "AbortError") {
         throw new Error(
           "Timeout: Train quá lâu, tăng timeout hoặc tối ưu train."
@@ -240,7 +240,7 @@ document.addEventListener("DOMContentLoaded", () => {
     setStatus("🎥 Live stream from Raspberry Pi", "#00ffff");
   }
 
-  // ========= init =========
+
   const token = getToken();
   const user = getUser();
   if (!token || !user) {

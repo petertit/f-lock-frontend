@@ -14,7 +14,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   let user = JSON.parse(rawUser);
 
-  // ===== Elements =====
   const nameEl = document.getElementById("name");
   const emailEl = document.getElementById("email");
   const phoneEl = document.getElementById("phone");
@@ -29,7 +28,6 @@ document.addEventListener("DOMContentLoaded", async () => {
   const backBtn = document.getElementById("back-btn");
   const historyBtn = document.getElementById("history-btn");
 
-  // ===== Helpers =====
   function getUserId() {
     return String(user?._id || user?.id || "");
   }
@@ -62,7 +60,6 @@ document.addEventListener("DOMContentLoaded", async () => {
           data = { raw: text };
         }
 
-        // nếu route không tồn tại
         if (res.status === 404) continue;
 
         return { res, data, path: p };
@@ -105,7 +102,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     saveBtn.style.display = on ? "inline-block" : "none";
   }
 
-  // ===== 1) Load fresh user from server (IMPORTANT) =====
   try {
     const id = getUserId();
     if (!id) throw new Error("Missing user id in session");
@@ -131,11 +127,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     console.warn("Không thể load lại user:", err.message);
   }
 
-  // render after refresh
   render();
   setEditable(false);
 
-  // ===== UI events =====
   changeBtn?.addEventListener("click", () => setEditable(true));
 
   saveBtn?.addEventListener("click", async () => {

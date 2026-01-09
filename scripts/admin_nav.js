@@ -14,6 +14,5 @@ document.addEventListener("DOMContentLoaded", () => {
   const user = getUser();
   const isAdmin = (user?.email || "").toLowerCase() === "admin@gmail.com";
 
-  // ✅ Chỉ admin mới thấy
   adminLink.style.display = isAdmin ? "inline-flex" : "none";
 });

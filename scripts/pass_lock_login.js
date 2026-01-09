@@ -6,7 +6,7 @@ document.addEventListener("DOMContentLoaded", () => {
     return sessionStorage.getItem("token");
   }
 
-  // ✅ heartbeat: giữ session locker sống
+  
   let touchTimer = null;
 
   async function touchLocker() {
@@ -37,10 +37,10 @@ document.addEventListener("DOMContentLoaded", () => {
     touchTimer = null;
   }
 
-  // start touch khi vào trang
+ 
   startTouchLoop();
 
-  // stop touch khi rời trang
+  
   window.addEventListener("pagehide", stopTouchLoop);
 
   const user = JSON.parse(sessionStorage.getItem("user"));

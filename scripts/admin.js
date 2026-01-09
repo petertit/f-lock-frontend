@@ -83,12 +83,6 @@ function fmtDate(d) {
   }
 }
 
-/**
- * Create locker badge HTML:
- * - LOCKED => red outline
- * - OPEN   => green outline
- * - EMPTY  => gray outline
- */
 function lockerBadgeHTML(lockerId, statusRaw) {
   const status = String(statusRaw || "").toUpperCase();
   let cls = "empty";
@@ -98,7 +92,6 @@ function lockerBadgeHTML(lockerId, statusRaw) {
   else if (status === "EMPTY") cls = "empty";
   else cls = "empty";
 
-  // fallback if lockerId null
   if (!lockerId) return "-";
 
   return `<span class="locker-badge ${cls}">${lockerId} (${
@@ -121,12 +114,10 @@ function render(users) {
     .map((u) => {
       const role = isAdminUser(u) ? "ADMIN" : "USER";
 
-      // ✅ badge based on locker_states if available
       let lockerCell = "-";
       if (u?.locker?.lockerId) {
         lockerCell = lockerBadgeHTML(u.locker.lockerId, u.locker.status);
       } else if (u?.registeredLocker) {
-        // nếu backend không trả locker_states, vẫn show registeredLocker (gray)
         lockerCell = lockerBadgeHTML(String(u.registeredLocker), "EMPTY");
       }
 

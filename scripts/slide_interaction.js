@@ -1,19 +1,13 @@
 // slide_interaction.js
-// Dùng cho index.html (slider).
-// - Mỗi slide phải có data-locker-id="01"..."06"
-// - Click slide => gọi window.handleLockerClick(lockerId)
-// - updateSliderUI(lockerStates) => tô màu đúng yêu cầu
 
 document.addEventListener("DOMContentLoaded", () => {
   const sliderTrack = document.querySelector(".slider-track");
   if (!sliderTrack) return;
 
-  // Click slide => tương tác như open.html
   sliderTrack.addEventListener("click", (e) => {
     const slide = e.target.closest(".slide:not(.clone)");
     if (!slide) return;
 
-    // bấm nút trên slide thì không trigger click slide
     if (e.target.closest("button")) return;
 
     e.preventDefault();
@@ -64,11 +58,11 @@ document.addEventListener("DOMContentLoaded", () => {
     if (isMine) {
       if (state.status === "LOCKED") {
         slide.classList.add("status-locked");
-        slide.style.border = "3px solid #ffd000"; // vàng
+        slide.style.border = "3px solid #ffd000";
         slide.style.backgroundColor = "rgba(255, 208, 0, 0.14)";
       } else if (state.status === "OPEN") {
         slide.classList.add("status-open");
-        slide.style.border = "3px solid #00ff66"; // xanh
+        slide.style.border = "3px solid #00ff66";
         slide.style.backgroundColor = "rgba(0, 255, 102, 0.12)";
       } else {
         slide.classList.add("status-locked");
@@ -76,14 +70,13 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     } else {
       slide.classList.add("status-other");
-      slide.style.border = "3px solid #ff2a2a"; // đỏ
+      slide.style.border = "3px solid #ff2a2a";
       slide.style.backgroundColor = "rgba(255, 42, 42, 0.12)";
       slide.style.opacity = "0.85";
     }
   }
 
   function addSlideButton(slide, text, bg, color, onClickHandler) {
-    // remove old
     slide.querySelectorAll(".slide-button").forEach((btn) => btn.remove());
 
     const button = document.createElement("button");
@@ -125,7 +118,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // expose để open.js gọi
   window.updateSliderUI = (lockerStates) => {
     const slides = sliderTrack.querySelectorAll(".slide:not(.clone)");
     const currentUserId = getCurrentUserId();
@@ -142,7 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
       applySlideStyle(slide, state, isMine);
 
-      // Nếu là tủ của mình và NOT EMPTY => hover có nút hủy đăng ký
       slide.querySelectorAll(".slide-button").forEach((btn) => btn.remove());
 
       if (isMine && state.status !== "EMPTY") {
@@ -155,7 +146,6 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   };
 
-  // Nếu open.js đã fetch xong trước đó, cập nhật UI luôn
   if (window.__lockerStates && typeof window.updateSliderUI === "function") {
     window.updateSliderUI(window.__lockerStates);
   }
