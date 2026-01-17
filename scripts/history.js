@@ -1,4 +1,4 @@
-// scripts/history.js (FIXED - auth + correct endpoint + no duplicate render)
+// scripts/history.js
 import { API_BASE } from "../api/api.js";
 
 const userRaw = sessionStorage.getItem("user");

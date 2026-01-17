@@ -1,4 +1,4 @@
-// scripts/scan.js (FINAL + AUTO-LOCK HEARTBEAT)
+// scripts/scan.js
 
 const BACKEND = "https://f-locker-backend.onrender.com";
 

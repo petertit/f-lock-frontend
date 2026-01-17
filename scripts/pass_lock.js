@@ -1,4 +1,4 @@
-// scripts/pass_lock.js (FINAL - matches pass_lock.html)
+// scripts/pass_lock.js
 
 const API_BASE = "https://f-locker-backend.onrender.com";
 

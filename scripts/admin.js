@@ -1,4 +1,4 @@
-// scripts/admin.js (NO MODULE IMPORT - FIX MIME ERROR) + locker badge UI
+// scripts/admin.js
 const API_BASE = "https://f-locker-backend.onrender.com";
 
 function getToken() {
